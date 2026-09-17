@@ -237,10 +237,22 @@ class AQM_MC_Rates {
 		$log   = array();
 		foreach ( self::sources() as $key => $src ) {
 			$url  = isset( $src['api'] ) ? $src['api'] : $src['url'];
-			$args = array( 'timeout' => 25, 'redirection' => 3, 'user-agent' => 'AQM Mortgage Calculator/' . AQM_MC_VERSION . ' (+' . home_url() . ')' );
+			// Several lenders answer 403, 406 or 429 unless the request looks like an ordinary visit.
+			$args = array(
+				'timeout'     => 45,
+				'redirection' => 3,
+				'user-agent'  => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36 AQM-Mortgage-Calculator/' . AQM_MC_VERSION,
+				'headers'     => array(
+					'Accept'          => 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+					'Accept-Language' => 'en-CA,en;q=0.9',
+					'Referer'         => isset( $src['url'] ) ? $src['url'] : home_url(),
+				),
+			);
 			if ( isset( $src['post'] ) ) {
-				$args['body']    = $src['post'];
-				$args['headers'] = array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' );
+				$args['body'] = $src['post'];
+				$args['headers']['Content-Type'] = 'application/json';
+				$args['headers']['Accept']       = 'application/json, text/plain, */*';
+				$args['headers']['Origin']       = 'https://www.td.com';
 				$res = wp_remote_post( $url, $args );
 			} else {
 				$res = wp_remote_get( $url, $args );
@@ -420,7 +432,9 @@ class AQM_MC_Rates {
 		$want = array( 'tauxPromo3ansF' => '3-year fixed (special offer)', 'tauxPromo5ansF' => '5-year fixed (special offer)' );
 		$rows = array();
 		foreach ( $want as $field => $label ) {
-			if ( preg_match( '/' . $field . '[^0-9]{0,40}(\d{1,2})[.,](\d{1,3})/', $body, $m ) ) {
+			// The figure sits just after the name, in quotes that the page escapes as \x22, so the
+			// number has to start right after a quote, an escape or a colon - never mid-digits.
+			if ( preg_match( '/' . $field . '[\s\S]{0,40}?(?:x22|"|:|\s)(\d{1,2})[.,](\d{1,3})(?!\d)/', $body, $m ) ) {
 				$rows[] = self::row( $src, $key, $label, $m[1] . '.' . $m[2] );
 			}
 		}
@@ -528,12 +542,16 @@ class AQM_MC_Rates {
 		echo '<p class="description">A lender&rsquo;s page is written for people, so a rate can be read wrongly. Nothing here reaches the calculator until you tick it, and a rate that changes has to be ticked again. Open the source page, check the figure, then tick it and save.</p>';
 		$fetched = self::decorate( self::fetched() );
 		$pending = 0;
-		echo '<table class="widefat striped"><thead><tr><th style="width:110px">Show it</th><th>Lender</th><th>What it is</th><th>Rate read</th><th>Read on</th><th>Check against</th></tr></thead><tbody>';
+		echo '<p class="aqm-mc-bulk"><button type="button" class="button" data-aqm-all="1">Tick all</button> '
+			. '<button type="button" class="button" data-aqm-all="0">Untick all</button> '
+			. '<button type="button" class="button" data-aqm-all="ok">Tick all except the ones that look wrong</button> '
+			. '<span class="description" style="margin-left:6px">Then press Save settings at the bottom.</span></p>';
+		echo '<table class="widefat striped"><thead><tr><th style="width:110px"><label><input type="checkbox" id="aqm-mc-checkall"> Show it</label></th><th>Lender</th><th>What it is</th><th>Rate read</th><th>Read on</th><th>Check against</th></tr></thead><tbody>';
 		foreach ( $fetched as $r ) {
 			if ( ! empty( $r['auto'] ) ) { continue; }
 			$ok = self::is_approved( $r, $set );
 			if ( ! $ok ) { $pending++; }
-			echo '<tr><td><label><input type="checkbox" form="aqm-mc-form" name="approve[' . esc_attr( $r['key'] ) . ']" value="' . esc_attr( $r['rate'] ) . '" ' . checked( $ok, true, false ) . '> ' . ( $ok ? 'shown' : '<strong>check</strong>' ) . '</label></td>'
+			echo '<tr' . ( empty( $r['doubt'] ) ? '' : ' data-aqm-doubt="1"' ) . '><td><label><input type="checkbox" form="aqm-mc-form" name="approve[' . esc_attr( $r['key'] ) . ']" value="' . esc_attr( $r['rate'] ) . '" ' . checked( $ok, true, false ) . '> ' . ( $ok ? 'shown' : '<strong>check</strong>' ) . '</label></td>'
 				. '<td>' . esc_html( $r['lender'] ) . '</td><td>' . esc_html( $r['label'] ) . '</td><td><strong>' . esc_html( number_format( (float) $r['rate'], 2 ) ) . '%</strong></td>'
 				. '<td>' . esc_html( $r['date'] ) . ( empty( $r['stale'] ) ? '' : ' <span style="color:#b32d2e">out of date</span>' ) . '</td>'
 				. '<td><a href="' . esc_url( $r['url'] ) . '" target="_blank" rel="noopener">' . esc_html( wp_parse_url( $r['url'], PHP_URL_HOST ) ) . '</a></td></tr>';
@@ -541,6 +559,12 @@ class AQM_MC_Rates {
 		if ( ! $fetched ) { echo '<tr><td colspan="6">Nothing read yet. Use &ldquo;Save and read rates now&rdquo;.</td></tr>'; }
 		echo '</tbody></table>';
 		if ( $pending ) { echo '<p><strong>' . (int) $pending . ' rate(s) are waiting to be checked.</strong> Tick the ones that match the lender&rsquo;s own page, then save.</p>'; }
+
+		echo '<script>(function(){var box=function(){return document.querySelectorAll("input[name^=approve]");};'
+			. 'var set=function(mode){Array.prototype.forEach.call(box(),function(c){var doubt=c.closest("tr")&&c.closest("tr").getAttribute("data-aqm-doubt");'
+			. 'c.checked = mode==="1" ? true : (mode==="0" ? false : !doubt);});};'
+			. 'Array.prototype.forEach.call(document.querySelectorAll("[data-aqm-all]"),function(b){b.addEventListener("click",function(){set(b.getAttribute("data-aqm-all"));});});'
+			. 'var all=document.getElementById("aqm-mc-checkall");if(all){all.addEventListener("change",function(){set(all.checked?"1":"0");});}})();</script>';
 
 		echo '<h2>What the calculator is showing now</h2>';
 		$items = self::listing();

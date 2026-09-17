@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.5.0
+ * Version:     1.5.2
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,11 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.5.2 (17 Sep 2026): tick-all buttons on the rates settings page - all, none, or all except the ones
+ * flagged as looking wrong - plus a tick-all box in the table heading.
+ * 1.5.1 (17 Sep 2026): requests now look like an ordinary visit (browser user agent, Accept and
+ * Referer headers, 45-second limit), which is what TD, Manulife Bank, Vancity and BMO were refusing,
+ * and National Bank's figures are read from the escaped data its page carries.
  * 1.5.0 (17 Sep 2026): ten more lenders - Tangerine and National Bank (read as data, shown as read),
  * and DUCA, Alterna Savings, FirstOntario, True North Mortgage, Manulife Bank, Neo Financial, Vancity
  * and Coast Capital (read from their pages, so they wait to be ticked). Sixteen sources in all.
@@ -59,7 +64,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.5.0' );
+define( 'AQM_MC_VERSION', '1.5.2' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
