@@ -92,7 +92,7 @@
 		var RATES = (cfg.rates || []).filter(function (r) { return r && +r.rate > 0; })
 			.sort(function (a, b) { return (+a.rate) - (+b.rate); }); // lowest rate first
 		if (RATES.length) {
-			var opts = '<option value="">Type my own rate</option>' + RATES.map(function (r, i) {
+			var opts = '<option value="">Type my own rate in the box below</option>' + RATES.map(function (r, i) {
 				return '<option value="' + i + '">' + (+r.rate).toFixed(2) + '% \u2013 ' + r.lender + ' \u2013 ' + r.label + (r.stale ? ' (out of date)' : '') + '</option>';
 			}).join('');
 			scs.forEach(function (el, i) {

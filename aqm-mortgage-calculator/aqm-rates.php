@@ -13,8 +13,10 @@
  *   Scotiabank      its dated daily posted-rate feed (dmtsms api)
  *   Tangerine       the dated JSON file its own rates page reads
  *   National Bank   the figures its own page carries, keyed by name
- *   RBC, nesto, DUCA, Alterna Savings, FirstOntario, True North Mortgage, Manulife Bank,
- *   Neo Financial, Vancity, Coast Capital - read from the wording of the rates page itself
+ *   nesto           the per-product data its own page publishes for search engines
+ *   DUCA            its Low Rate Mortgage (insured high-ratio) table, read on its own
+ *   RBC, Alterna Savings, FirstOntario, True North Mortgage, Manulife Bank, Neo Financial,
+ *   Vancity, Coast Capital - read from the wording of the rates page itself
  *
  * Not included, and why: Desjardins asks not to be read automatically (robots.txt), and Meridian,
  * EQ Bank, B2B Bank and Community Trust block automated visits. Their rates can still be typed in by
@@ -99,8 +101,8 @@ class AQM_MC_Rates {
 			'duca' => array(
 				'name' => 'DUCA Credit Union',
 				'url'  => 'https://www.duca.com/rates/',
-				'note' => 'published rates',
-				'fn'   => 'parse_terms',
+				'note' => 'insured high-ratio',
+				'fn'   => 'parse_duca',
 			),
 			'alterna' => array(
 				'name' => 'Alterna Savings',
@@ -147,8 +149,8 @@ class AQM_MC_Rates {
 			'nesto' => array(
 				'name' => 'nesto',
 				'url'  => 'https://www.nesto.ca/mortgage-rates/',
-				'note' => 'lowest rates nesto publishes',
-				'fn'   => 'parse_terms',
+				'note' => 'insured',
+				'fn'   => 'parse_nesto',
 			),
 		);
 	}
@@ -436,6 +438,55 @@ class AQM_MC_Rates {
 			// number has to start right after a quote, an escape or a colon - never mid-digits.
 			if ( preg_match( '/' . $field . '[\s\S]{0,40}?(?:x22|"|:|\s)(\d{1,2})[.,](\d{1,3})(?!\d)/', $body, $m ) ) {
 				$rows[] = self::row( $src, $key, $label, $m[1] . '.' . $m[2] );
+			}
+		}
+		return array_filter( $rows );
+	}
+
+	/**
+	 * DUCA lists several mortgage tables on one page, and its "most popular rates" banner puts the
+	 * figure above the product name, which is how the general reader picked up a GIC rate. This one
+	 * reads only the first table - Low Rate Mortgage (Insured High Ratio) - and stops at the next.
+	 */
+	public static function parse_duca( $body, $key, $src ) {
+		$at = stripos( $body, 'Low Rate Mortgage' );
+		if ( false === $at ) { return array(); }
+		$end = stripos( $body, '2nd Mortgage', $at );
+		$cut = substr( $body, $at, ( false === $end ? 8000 : $end - $at ) );
+		$text = self::text( $cut );
+		$want = array(
+			'/\b3\s*Year\s+Fixed\s+Closed\s+(\d{1,2}\.\d{1,3})\s*%/i'  => '3-year fixed',
+			'/\b5\s*Year\s+Fixed\s+Closed\s+(\d{1,2}\.\d{1,3})\s*%/i'  => '5-year fixed',
+			'/\b3\s*Year\s+Variable\s+Rate\s+(\d{1,2}\.\d{1,3})\s*%/i' => '3-year variable',
+			'/\b5\s*Year\s+Variable\s+Rate\s+(\d{1,2}\.\d{1,3})\s*%/i' => '5-year variable',
+		);
+		$rows = array();
+		foreach ( $want as $rx => $label ) {
+			if ( preg_match( $rx, $text, $m ) ) {
+				$rows[] = self::row( $src, $key, $label . ' (' . $src['note'] . ')', $m[1] );
+			}
+		}
+		return array_filter( $rows );
+	}
+
+	/**
+	 * nesto publishes every rate on its page a second time as search-engine data, one entry per
+	 * product, each carrying its own name and figure. Reading those is exact, where reading the
+	 * headline panel is not: there the figure sits above its label, which is how the 5-year fixed
+	 * came through as the variable rate on 17 Sep 2026.
+	 */
+	public static function parse_nesto( $body, $key, $src ) {
+		$want = array(
+			'fixed-3-insured'    => '3-year fixed',
+			'fixed-5-insured'    => '5-year fixed',
+			'variable-3-insured' => '3-year variable',
+			'variable-5-insured' => '5-year variable',
+		);
+		$rows = array();
+		foreach ( $want as $id => $label ) {
+			$rx = '/#fp-' . preg_quote( $id, '/' ) . '"[\s\S]{0,1200}?"interestRate"[\s\S]{0,200}?"value"\s*:\s*(\d{1,2}(?:\.\d{1,3})?)/';
+			if ( preg_match( $rx, $body, $m ) ) {
+				$rows[] = self::row( $src, $key, $label . ' (' . $src['note'] . ')', $m[1] );
 			}
 		}
 		return array_filter( $rows );
