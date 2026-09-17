@@ -59,3 +59,8 @@
 .aqm-mc__costs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 18px;align-items:end}
 .aqm-mc__tag{display:inline-block;font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:#6b4e00;background:#fbf1d9;border-radius:3px;padding:1px 5px;margin-left:4px;vertical-align:1px}
 .aqm-mc__misc input[data-misc-name]{margin-bottom:6px}
+.aqm-mc tr.aqm-mc__cost td{padding-top:4px;padding-bottom:4px}
+.aqm-mc tr.aqm-mc__cost .aqm-mc__pfx{min-width:120px;max-width:170px;margin-left:auto}
+.aqm-mc tr.aqm-mc__cost input[type=text]{text-align:right;padding-top:6px;padding-bottom:6px}
+.aqm-mc tr.aqm-mc__cost input[data-misc-name]{text-align:left;max-width:260px;padding:6px 8px;font-size:.92rem;background:#fff;border:1px dashed #9a9a9a}
+.aqm-mc tr.aqm-mc__notes td{font-size:.8rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;padding-top:0;white-space:normal}

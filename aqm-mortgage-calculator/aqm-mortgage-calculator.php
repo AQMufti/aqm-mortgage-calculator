@@ -2,12 +2,15 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.2.0
+ * Version:     1.2.1
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
  * Requires PHP: 7.4
  *
+ * 1.2.1 (17 Sep 2026): the other costs are edited right in the side-by-side table, one amount box per
+ * scenario, filled with typical amounts; both Miscellaneous rows always show, with an editable name (suggested: Survey, Utility hook-ups;
+ * a drop-down offers more).
  * 1.2.0 (17 Sep 2026): "Other costs of buying" - lawyer, disbursements, title insurance, adjustments,
  * home insurance, moving, inspection, appraisal, status certificate and two miscellaneous items,
  * all editable, added to cash needed (items paid before closing shown separately).
@@ -39,7 +42,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.2.0' );
+define( 'AQM_MC_VERSION', '1.2.1' );
 
 if ( file_exists( __DIR__ . '/aqm-updater.php' ) ) {
 	require_once __DIR__ . '/aqm-updater.php';
@@ -103,36 +106,10 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 </div>
 
 <div class="aqm-mc__card">
-	<h3>Other costs of buying</h3>
-	<p class="aqm-mc__note" style="margin-top:-6px">Typical Ontario amounts are filled in; change any of them to match your quotes. <strong>Paid before closing:</strong> home inspection and appraisal (usually while the offer is conditional), and the condo status certificate.</p>
-	<div class="aqm-mc__costs">
-	<?php
-	$costs = array(
-		array( 'legal', 'Lawyer&rsquo;s fee (incl. HST)', 1800, 'at' ),
-		array( 'disb', 'Disbursements and registration', 600, 'at' ),
-		array( 'title', 'Title insurance', 400, 'at' ),
-		array( 'adjust', 'Property tax and utility adjustments', 1000, 'at' ),
-		array( 'insure', 'Home insurance (first year)', 1500, 'at' ),
-		array( 'moving', 'Moving', 1500, 'at' ),
-		array( 'inspect', 'Home inspection', 500, 'before' ),
-		array( 'appraise', 'Appraisal', 400, 'before' ),
-		array( 'status', 'Condo status certificate (max $100)', 0, 'before' ),
-	);
-	foreach ( $costs as $c ) {
-		echo '<div><label for="' . $id . '-c-' . $c[0] . '">' . $c[1] . ( 'before' === $c[3] ? ' <span class="aqm-mc__tag">before closing</span>' : '' ) . '</label><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" id="' . $id . '-c-' . $c[0] . '" data-cost="' . $c[0] . '" data-when="' . $c[3] . '" data-fmt="money" value="' . number_format( $c[2] ) . '"></div></div>';
-	}
-	foreach ( array( 1, 2 ) as $m ) {
-		echo '<div class="aqm-mc__misc"><label for="' . $id . '-m' . $m . '">Miscellaneous ' . $m . '</label><input type="text" id="' . $id . '-m' . $m . 'n" data-misc-name="' . $m . '" placeholder="What is it? e.g. survey" aria-label="Miscellaneous ' . $m . ' description"><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" id="' . $id . '-m' . $m . '" data-cost="misc' . $m . '" data-when="at" data-fmt="money" value="0"></div></div>';
-	}
-	?>
-	</div>
-</div>
-
-<div class="aqm-mc__card">
 	<h3>Payments at a glance</h3>
 	<div class="aqm-mc__kpis" data-k="kpis"></div>
 	<h3>Side by side</h3>
-	<div class="aqm-mc__tablewrap"><table data-k="compare"><thead><tr><th scope="col"></th><th scope="col">Scenario A</th><th scope="col">Scenario B</th><th scope="col">Scenario C</th></tr></thead><tbody></tbody></table></div>
+	<div class="aqm-mc__tablewrap"><table data-k="compare"><thead><tr><th scope="col"></th><th scope="col">Scenario A</th><th scope="col">Scenario B</th><th scope="col">Scenario C</th></tr></thead><tbody data-part="top"></tbody><tbody data-part="at"></tbody><tbody data-part="mid"></tbody><tbody data-part="before"></tbody><tbody data-part="bottom"></tbody></table></div>
 </div>
 
 <div class="aqm-mc__card">

@@ -1,4 +1,4 @@
-/* AQM Mortgage Calculator 1.2.0 - rules and sources are listed in aqm-mortgage-calculator.php */
+/* AQM Mortgage Calculator 1.2.1 - rules and sources are listed in aqm-mortgage-calculator.php */
 (function () {
 	'use strict';
 
@@ -7,6 +7,20 @@
 	var N0 = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
 	var COLORS = ['#A62021', '#2E6DB4', '#A87615'], NAMES = ['Scenario A', 'Scenario B', 'Scenario C'];
 	var NS = 'http://www.w3.org/2000/svg';
+	/* Other costs of buying: typical Ontario amounts, editable per scenario in the table. */
+	var COSTS = [
+		{ key: 'legal', name: 'Lawyer\u2019s fee (incl. HST)', amt: 1800, when: 'at' },
+		{ key: 'disb', name: 'Disbursements and registration', amt: 600, when: 'at' },
+		{ key: 'title', name: 'Title insurance', amt: 400, when: 'at' },
+		{ key: 'adjust', name: 'Property tax and utility adjustments', amt: 1000, when: 'at' },
+		{ key: 'insure', name: 'Home insurance (first year)', amt: 1500, when: 'at' },
+		{ key: 'moving', name: 'Moving', amt: 1500, when: 'at' },
+		{ key: 'misc1', name: 'Miscellaneous 1', suggest: 'Survey', amt: 0, when: 'at', misc: true },
+		{ key: 'misc2', name: 'Miscellaneous 2', suggest: 'Utility hook-ups', amt: 0, when: 'at', misc: true },
+		{ key: 'inspect', name: 'Home inspection', amt: 500, when: 'before' },
+		{ key: 'appraise', name: 'Appraisal', amt: 400, when: 'before' },
+		{ key: 'status', name: 'Condo status certificate (max $100)', amt: 0, when: 'before' }
+	];
 
 	/* ---------------------------------------------------------------- rules */
 	var R = {
@@ -80,6 +94,22 @@
 			q('[data-k=amort]', el).value = String(cfg.amort || 25);
 		});
 
+		function costRows(when) {
+			return COSTS.filter(function (c) { return c.when === when; }).map(function (c) {
+				var label = c.misc ? '<input type="text" list="' + root.id + '-misc-list" data-misc-name="' + c.key + '" value="' + c.suggest + '" placeholder="' + c.name + ' (describe)" title="Type your own or pick a suggestion" aria-label="' + c.name + ' description">' : c.name;
+				var cells = [0, 1, 2].map(function (i) {
+					return '<td><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" data-cost="' + c.key + '" data-col="' + i + '" data-fmt="money" value="' + N0.format(c.amt) + '" aria-label="' + c.name + ', ' + NAMES[i] + '"></div></td>';
+				}).join('');
+				return '<tr class="aqm-mc__cost"><td>' + label + '</td>' + cells + '</tr>';
+			}).join('');
+		}
+		var MISC = ['Survey', 'Utility hook-ups', 'Home warranty', 'Water or septic inspection', 'Condo move-in fee', 'Furniture and appliances', 'Repairs or renovations', 'Mortgage broker or lender fee', 'Locksmith and security', 'Cleaning'];
+		var dl = document.createElement('datalist'); dl.id = root.id + '-misc-list';
+		dl.innerHTML = MISC.map(function (m) { return '<option value="' + m + '">'; }).join('');
+		root.appendChild(dl);
+		q('[data-part=at]').innerHTML = costRows('at');
+		q('[data-part=before]').innerHTML = costRows('before');
+
 		function compute() {
 			var entered = parseNum(q('[data-k=price]').value), loc = q('[data-k=loc]').value, fv = q('[data-k=freq]').value;
 			var term = +q('[data-k=term]').value, ftb = q('[data-k=ftb]').checked, nb = q('[data-k=newbuild]').checked, hm = q('[data-k=hstmode]').value;
@@ -91,15 +121,15 @@
 			var perYear = parseInt(fv, 10), accel = /a$/.test(fv);
 			var ltt = brackets(price, R.ON), ontRebate = ftb ? Math.min(R.onRefund, ltt) : 0;
 			var mltt = loc === 'to' ? brackets(price, R.TO) : 0, torRebate = (ftb && loc === 'to') ? Math.min(R.toRebate, mltt) : 0;
-			var costs = qa('[data-cost]').map(function (el) {
-				var key = el.getAttribute('data-cost'), label = el.closest('div').parentNode.querySelector('label');
-				var name = label ? label.textContent.replace(/before closing/i, '').trim() : key;
-				if (/^misc/.test(key)) { var nm = q('[data-misc-name="' + key.slice(4) + '"]'); name = (nm && nm.value.trim()) || ('Miscellaneous ' + key.slice(4)); }
-				return { key: key, name: name, when: el.getAttribute('data-when'), amt: parseNum(el.value) };
+			var colCost = [0, 1, 2].map(function (i) {
+				var at = 0, before = 0;
+				qa('[data-cost][data-col="' + i + '"]').forEach(function (el) {
+					var c = COSTS.filter(function (x) { return x.key === el.getAttribute('data-cost'); })[0];
+					if (c && c.when === 'before') { before += parseNum(el.value); } else { at += parseNum(el.value); }
+				});
+				return { at: at, before: before };
 			});
-			var atCost = 0, beforeCost = 0;
-			costs.forEach(function (c) { if (c.when === 'before') { beforeCost += c.amt; } else { atCost += c.amt; } });
-			ctx = { entered: entered, price: price, loc: loc, fv: fv, term: term, ftb: ftb, nb: nb, hm: hm, hst: hst, ltt: ltt, ontRebate: ontRebate, mltt: mltt, torRebate: torRebate, costs: costs, atCost: atCost, beforeCost: beforeCost };
+			ctx = { entered: entered, price: price, loc: loc, fv: fv, term: term, ftb: ftb, nb: nb, hm: hm, hst: hst, ltt: ltt, ontRebate: ontRebate, mltt: mltt, torRebate: torRebate };
 
 			results = scs.map(function (el, i) {
 				var dp = q('[data-k=dpct]', el), dd = q('[data-k=ddol]', el);
@@ -135,8 +165,9 @@
 					down: down, pct: price > 0 ? down / price * 100 : 0, min: min, pr: pr, prem: prem, pst: pst, loan: loan, pay: pay, monthly: monthly, rows: rows, perYear: perYear,
 					tI: tI, tP: tP, tPay: tPay, balTerm: termRows.length ? termRows[termRows.length - 1].bal : loan, totI: cumI, totPaid: cumI + loan,
 					payoff: rows.length / perYear, years: Math.max(1, Math.ceil(rows.length / perYear)), amort: amort, rate: rate, insured: insured,
-					closing: down + ltt - ontRebate + mltt - torRebate + pst + atCost,
-					cash: down + ltt - ontRebate + mltt - torRebate + pst + atCost + beforeCost
+					atCost: colCost[i].at, beforeCost: colCost[i].before,
+					closing: down + ltt - ontRebate + mltt - torRebate + pst + colCost[i].at,
+					cash: down + ltt - ontRebate + mltt - torRebate + pst + colCost[i].at + colCost[i].before
 				};
 			});
 			renderKpis(); renderCompare(); renderPrograms(); renderChart(); renderSched();
@@ -182,20 +213,20 @@
 				+ row('Total interest', function (x) { return M0.format(x.totI); })
 				+ row('Total of all payments', function (x) { return M0.format(x.totPaid); })
 				+ group('Cash needed at closing')
+				+ '<tr class="aqm-mc__notes"><td colspan="4">Typical amounts are filled in below the taxes; type over any of them, per scenario, to match your quotes.</td></tr>'
 				+ row('Down payment', function (x) { return M0.format(x.down); })
 				+ same('Ontario land transfer tax', M0.format(ctx.ltt))
 				+ (ctx.ftb ? same('Ontario first-time buyer refund', '-' + M0.format(ctx.ontRebate)) : '')
 				+ (ctx.loc === 'to' ? same('Toronto land transfer tax', M0.format(ctx.mltt)) : '')
 				+ (ctx.loc === 'to' && ctx.ftb ? same('Toronto first-time buyer rebate', '-' + M0.format(ctx.torRebate)) : '')
-				+ row('PST on CMHC premium (8%)', function (x) { return M0.format(x.pst); })
-				+ ctx.costs.filter(function (c) { return c.when !== 'before' && (c.amt > 0 || !/^misc/.test(c.key)); }).map(function (c) { return same(c.name, M0.format(c.amt)); }).join('')
-				+ row('Total due at closing', function (x) { return M0.format(x.closing); }, 'aqm-mc__em')
+				+ row('PST on CMHC premium (8%)', function (x) { return M0.format(x.pst); });
+			q('[data-part=top]').innerHTML = out;
+			q('[data-part=mid]').innerHTML = row('Total due at closing', function (x) { return M0.format(x.closing); }, 'aqm-mc__em')
 				+ group('Paid before closing')
-				+ ctx.costs.filter(function (c) { return c.when === 'before'; }).map(function (c) { return same(c.name, M0.format(c.amt)); }).join('')
-				+ same('Total paid before closing', M0.format(ctx.beforeCost), 'aqm-mc__em')
+				+ '<tr class="aqm-mc__notes"><td colspan="4">Usually paid while the offer is still conditional, before closing day.</td></tr>';
+			q('[data-part=bottom]').innerHTML = row('Total paid before closing', function (x) { return M0.format(x.beforeCost); }, 'aqm-mc__em')
 				+ group('All cash you need')
 				+ row('Total cash needed to buy', function (x) { return M0.format(x.cash); }, 'aqm-mc__em');
-			q('[data-k=compare] tbody').innerHTML = out;
 		}
 
 		function renderPrograms() {
