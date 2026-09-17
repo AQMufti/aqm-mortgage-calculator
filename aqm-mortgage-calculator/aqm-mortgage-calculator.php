@@ -2,12 +2,14 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.1.0
+ * Version:     1.1.1
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
  * Requires PHP: 7.4
  *
+ * 1.1.1 (17 Sep 2026): "Share of mortgage repaid" row under the term figures, so a smaller
+ * principal-paid dollar amount on a smaller mortgage is not misread.
  * 1.1.0 (17 Sep 2026): script and styles moved to assets/ files. As inline page script, WordPress
  * turned every "&&" into "&#038;&#038;", which stopped the whole calculator. Amounts are formatted
  * as you type, % and $ down payment fill each other, everything recalculates on every keystroke,
@@ -34,7 +36,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.1.0' );
+define( 'AQM_MC_VERSION', '1.1.1' );
 
 if ( file_exists( __DIR__ . '/aqm-updater.php' ) ) {
 	require_once __DIR__ . '/aqm-updater.php';

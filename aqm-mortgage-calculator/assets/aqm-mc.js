@@ -1,4 +1,4 @@
-/* AQM Mortgage Calculator 1.1.0 - rules and sources are listed in aqm-mortgage-calculator.php */
+/* AQM Mortgage Calculator 1.1.1 - rules and sources are listed in aqm-mortgage-calculator.php */
 (function () {
 	'use strict';
 
@@ -167,6 +167,7 @@
 				+ row('Total payments', function (x) { return M0.format(x.tPay); })
 				+ row('Interest paid', function (x) { return M0.format(x.tI); })
 				+ row('Principal paid', function (x) { return M0.format(x.tP); })
+				+ row('Share of mortgage repaid', function (x) { return x.loan > 0 ? fl(x.tP / x.loan * 100) + '%' : '0%'; })
 				+ row('Balance at end of term', function (x) { return M0.format(x.balTerm); }, 'aqm-mc__em')
 				+ group('Over the full amortization')
 				+ row('Total interest', function (x) { return M0.format(x.totI); })
