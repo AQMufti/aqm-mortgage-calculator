@@ -1,4 +1,5 @@
-/* AQM Mortgage Calculator 1.2.1 - rules and sources are listed in aqm-mortgage-calculator.php */
+/* AQM Mortgage Calculator 1.2.2 - Copyright (c) 2026 A. Q. Mufti. All rights reserved.
+   Rules and sources are listed in aqm-mortgage-calculator.php */
 (function () {
 	'use strict';
 

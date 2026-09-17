@@ -2,12 +2,15 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.2.1
+ * Version:     1.2.2
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
  * Requires PHP: 7.4
  *
+ * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
+ *
+ * 1.2.2 (17 Sep 2026): copyright notice and a full disclaimer under the calculator.
  * 1.2.1 (17 Sep 2026): the other costs are edited right in the side-by-side table, one amount box per
  * scenario, filled with typical amounts; both Miscellaneous rows always show, with an editable name (suggested: Survey, Utility hook-ups;
  * a drop-down offers more).
@@ -42,7 +45,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.2.1' );
+define( 'AQM_MC_VERSION', '1.2.2' );
 
 if ( file_exists( __DIR__ . '/aqm-updater.php' ) ) {
 	require_once __DIR__ . '/aqm-updater.php';
@@ -134,7 +137,13 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 	<div class="aqm-mc__sched"><table data-k="sched"><thead></thead><tbody></tbody></table></div>
 </div>
 
-<p class="aqm-mc__note">Estimates for planning only, based on rules published as of September 2026. Rates, insurer rules, rebates and taxes change, and the new-home HST relief applies to agreements signed from 1 April 2026 to 31 March 2027 for a home you will live in. Canadian fixed-rate mortgages compound semi-annually; lenders may round differently. Land transfer tax shown for a property with one or two single-family homes. Other costs use typical amounts you can change; your lawyer's statement of adjustments will have the exact figures. Confirm figures with your lender and real estate lawyer before you commit.</p>
+<div class="aqm-mc__disclaimer" role="note">
+	<strong>Disclaimer</strong>
+	<p>This calculator is a planning aid only. Its results are estimates based on the figures you enter and on rules, rates, rebates and taxes as published in September 2026, which can change without notice. It is not financial, mortgage, legal, tax or insurance advice, and it is not a mortgage approval, rate offer or quote.</p>
+	<p>Your actual payments, insurance premium, taxes, rebates and closing costs depend on your lender, your mortgage insurer, your own circumstances and the final terms of your purchase. Canadian fixed-rate mortgages compound semi-annually and lenders may round differently. Land transfer tax is shown for a property with one or two single-family homes; the new-home HST relief applies to agreements signed from 1 April 2026 to 31 March 2027 for a home you will live in. Other costs use typical amounts that you can change.</p>
+	<p><strong>Before you make any decision, verify every figure with qualified professionals</strong>: a licensed mortgage agent or your lender, a real estate lawyer, and an accountant or tax advisor. A. Q. Mufti and RE/MAX Real Estate Centre Inc., Brokerage accept no liability for decisions made using this calculator.</p>
+</div>
+<p class="aqm-mc__copy">&copy; <?php echo 2026 < (int) gmdate( 'Y' ) ? '2026&ndash;' . (int) gmdate( 'Y' ) : '2026'; ?> A. Q. Mufti. All rights reserved. AQM Mortgage Calculator.</p>
 </div>
 	<?php
 	return ob_get_clean();

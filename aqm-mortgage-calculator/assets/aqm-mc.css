@@ -1,3 +1,4 @@
+/* AQM Mortgage Calculator - Copyright (c) 2026 A. Q. Mufti. All rights reserved. */
 .aqm-mc{--red:#A62021;--ink:#393939;--muted:#6b6b6b;--line:#e2e2e2;--grid:#ececec;--s0:#A62021;--s1:#2E6DB4;--s2:#A87615;max-width:1180px;margin:0 auto;color:var(--ink);font-size:16px;line-height:1.45}
 .aqm-mc *{box-sizing:border-box}
 .aqm-mc__card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:22px;margin-bottom:22px}
@@ -64,3 +65,8 @@
 .aqm-mc tr.aqm-mc__cost input[type=text]{text-align:right;padding-top:6px;padding-bottom:6px}
 .aqm-mc tr.aqm-mc__cost input[data-misc-name]{text-align:left;max-width:260px;padding:6px 8px;font-size:.92rem;background:#fff;border:1px dashed #9a9a9a}
 .aqm-mc tr.aqm-mc__notes td{font-size:.8rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;padding-top:0;white-space:normal}
+.aqm-mc__copy{font-size:.8rem;color:var(--muted);text-align:center;margin:10px 0 0}
+.aqm-mc__disclaimer{border:1px solid var(--line);border-left:4px solid var(--ink);background:#fafafa;border-radius:6px;padding:14px 16px;margin:4px 0 0;font-size:.84rem;color:#4a4a4a}
+.aqm-mc__disclaimer>strong{display:block;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin-bottom:6px}
+.aqm-mc__disclaimer p{margin:0 0 8px}
+.aqm-mc__disclaimer p:last-child{margin-bottom:0}
