@@ -1,4 +1,4 @@
-/* AQM Mortgage Calculator 1.1.1 - rules and sources are listed in aqm-mortgage-calculator.php */
+/* AQM Mortgage Calculator 1.2.0 - rules and sources are listed in aqm-mortgage-calculator.php */
 (function () {
 	'use strict';
 
@@ -91,7 +91,15 @@
 			var perYear = parseInt(fv, 10), accel = /a$/.test(fv);
 			var ltt = brackets(price, R.ON), ontRebate = ftb ? Math.min(R.onRefund, ltt) : 0;
 			var mltt = loc === 'to' ? brackets(price, R.TO) : 0, torRebate = (ftb && loc === 'to') ? Math.min(R.toRebate, mltt) : 0;
-			ctx = { entered: entered, price: price, loc: loc, fv: fv, term: term, ftb: ftb, nb: nb, hm: hm, hst: hst, ltt: ltt, ontRebate: ontRebate, mltt: mltt, torRebate: torRebate };
+			var costs = qa('[data-cost]').map(function (el) {
+				var key = el.getAttribute('data-cost'), label = el.closest('div').parentNode.querySelector('label');
+				var name = label ? label.textContent.replace(/before closing/i, '').trim() : key;
+				if (/^misc/.test(key)) { var nm = q('[data-misc-name="' + key.slice(4) + '"]'); name = (nm && nm.value.trim()) || ('Miscellaneous ' + key.slice(4)); }
+				return { key: key, name: name, when: el.getAttribute('data-when'), amt: parseNum(el.value) };
+			});
+			var atCost = 0, beforeCost = 0;
+			costs.forEach(function (c) { if (c.when === 'before') { beforeCost += c.amt; } else { atCost += c.amt; } });
+			ctx = { entered: entered, price: price, loc: loc, fv: fv, term: term, ftb: ftb, nb: nb, hm: hm, hst: hst, ltt: ltt, ontRebate: ontRebate, mltt: mltt, torRebate: torRebate, costs: costs, atCost: atCost, beforeCost: beforeCost };
 
 			results = scs.map(function (el, i) {
 				var dp = q('[data-k=dpct]', el), dd = q('[data-k=ddol]', el);
@@ -127,7 +135,8 @@
 					down: down, pct: price > 0 ? down / price * 100 : 0, min: min, pr: pr, prem: prem, pst: pst, loan: loan, pay: pay, monthly: monthly, rows: rows, perYear: perYear,
 					tI: tI, tP: tP, tPay: tPay, balTerm: termRows.length ? termRows[termRows.length - 1].bal : loan, totI: cumI, totPaid: cumI + loan,
 					payoff: rows.length / perYear, years: Math.max(1, Math.ceil(rows.length / perYear)), amort: amort, rate: rate, insured: insured,
-					cash: down + ltt - ontRebate + mltt - torRebate + pst
+					closing: down + ltt - ontRebate + mltt - torRebate + pst + atCost,
+					cash: down + ltt - ontRebate + mltt - torRebate + pst + atCost + beforeCost
 				};
 			});
 			renderKpis(); renderCompare(); renderPrograms(); renderChart(); renderSched();
@@ -137,7 +146,7 @@
 
 		function renderKpis() {
 			q('[data-k=kpis]').innerHTML = results.map(function (x, i) {
-				return '<div class="aqm-mc__kpi" style="--c:' + COLORS[i] + '"><small>' + NAMES[i] + ' &middot; ' + fl(x.pct) + '% down</small><strong>' + M2.format(x.pay) + '</strong><span>' + FREQ[ctx.fv].toLowerCase() + ' &middot; mortgage ' + M0.format(x.loan) + ' &middot; cash to close ' + M0.format(x.cash) + '</span></div>';
+				return '<div class="aqm-mc__kpi" style="--c:' + COLORS[i] + '"><small>' + NAMES[i] + ' &middot; ' + fl(x.pct) + '% down</small><strong>' + M2.format(x.pay) + '</strong><span>' + FREQ[ctx.fv].toLowerCase() + ' &middot; mortgage ' + M0.format(x.loan) + ' &middot; cash needed ' + M0.format(x.cash) + '</span></div>';
 			}).join('');
 		}
 
@@ -179,7 +188,13 @@
 				+ (ctx.loc === 'to' ? same('Toronto land transfer tax', M0.format(ctx.mltt)) : '')
 				+ (ctx.loc === 'to' && ctx.ftb ? same('Toronto first-time buyer rebate', '-' + M0.format(ctx.torRebate)) : '')
 				+ row('PST on CMHC premium (8%)', function (x) { return M0.format(x.pst); })
-				+ row('Total cash at closing', function (x) { return M0.format(x.cash); }, 'aqm-mc__em');
+				+ ctx.costs.filter(function (c) { return c.when !== 'before' && (c.amt > 0 || !/^misc/.test(c.key)); }).map(function (c) { return same(c.name, M0.format(c.amt)); }).join('')
+				+ row('Total due at closing', function (x) { return M0.format(x.closing); }, 'aqm-mc__em')
+				+ group('Paid before closing')
+				+ ctx.costs.filter(function (c) { return c.when === 'before'; }).map(function (c) { return same(c.name, M0.format(c.amt)); }).join('')
+				+ same('Total paid before closing', M0.format(ctx.beforeCost), 'aqm-mc__em')
+				+ group('All cash you need')
+				+ row('Total cash needed to buy', function (x) { return M0.format(x.cash); }, 'aqm-mc__em');
 			q('[data-k=compare] tbody').innerHTML = out;
 		}
 

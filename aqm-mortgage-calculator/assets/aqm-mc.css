@@ -56,3 +56,6 @@
 .aqm-mc__kpi small{display:block;color:var(--muted);font-size:.8rem}
 .aqm-mc__kpi strong{display:block;font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1.2}
 .aqm-mc__kpi span{font-size:.85rem;color:var(--muted)}
+.aqm-mc__costs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 18px;align-items:end}
+.aqm-mc__tag{display:inline-block;font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:#6b4e00;background:#fbf1d9;border-radius:3px;padding:1px 5px;margin-left:4px;vertical-align:1px}
+.aqm-mc__misc input[data-misc-name]{margin-bottom:6px}

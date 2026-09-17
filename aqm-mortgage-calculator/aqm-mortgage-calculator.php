@@ -2,12 +2,15 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.1.1
+ * Version:     1.2.0
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
  * Requires PHP: 7.4
  *
+ * 1.2.0 (17 Sep 2026): "Other costs of buying" - lawyer, disbursements, title insurance, adjustments,
+ * home insurance, moving, inspection, appraisal, status certificate and two miscellaneous items,
+ * all editable, added to cash needed (items paid before closing shown separately).
  * 1.1.1 (17 Sep 2026): "Share of mortgage repaid" row under the term figures, so a smaller
  * principal-paid dollar amount on a smaller mortgage is not misread.
  * 1.1.0 (17 Sep 2026): script and styles moved to assets/ files. As inline page script, WordPress
@@ -36,7 +39,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.1.1' );
+define( 'AQM_MC_VERSION', '1.2.0' );
 
 if ( file_exists( __DIR__ . '/aqm-updater.php' ) ) {
 	require_once __DIR__ . '/aqm-updater.php';
@@ -100,6 +103,32 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 </div>
 
 <div class="aqm-mc__card">
+	<h3>Other costs of buying</h3>
+	<p class="aqm-mc__note" style="margin-top:-6px">Typical Ontario amounts are filled in; change any of them to match your quotes. <strong>Paid before closing:</strong> home inspection and appraisal (usually while the offer is conditional), and the condo status certificate.</p>
+	<div class="aqm-mc__costs">
+	<?php
+	$costs = array(
+		array( 'legal', 'Lawyer&rsquo;s fee (incl. HST)', 1800, 'at' ),
+		array( 'disb', 'Disbursements and registration', 600, 'at' ),
+		array( 'title', 'Title insurance', 400, 'at' ),
+		array( 'adjust', 'Property tax and utility adjustments', 1000, 'at' ),
+		array( 'insure', 'Home insurance (first year)', 1500, 'at' ),
+		array( 'moving', 'Moving', 1500, 'at' ),
+		array( 'inspect', 'Home inspection', 500, 'before' ),
+		array( 'appraise', 'Appraisal', 400, 'before' ),
+		array( 'status', 'Condo status certificate (max $100)', 0, 'before' ),
+	);
+	foreach ( $costs as $c ) {
+		echo '<div><label for="' . $id . '-c-' . $c[0] . '">' . $c[1] . ( 'before' === $c[3] ? ' <span class="aqm-mc__tag">before closing</span>' : '' ) . '</label><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" id="' . $id . '-c-' . $c[0] . '" data-cost="' . $c[0] . '" data-when="' . $c[3] . '" data-fmt="money" value="' . number_format( $c[2] ) . '"></div></div>';
+	}
+	foreach ( array( 1, 2 ) as $m ) {
+		echo '<div class="aqm-mc__misc"><label for="' . $id . '-m' . $m . '">Miscellaneous ' . $m . '</label><input type="text" id="' . $id . '-m' . $m . 'n" data-misc-name="' . $m . '" placeholder="What is it? e.g. survey" aria-label="Miscellaneous ' . $m . ' description"><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" id="' . $id . '-m' . $m . '" data-cost="misc' . $m . '" data-when="at" data-fmt="money" value="0"></div></div>';
+	}
+	?>
+	</div>
+</div>
+
+<div class="aqm-mc__card">
 	<h3>Payments at a glance</h3>
 	<div class="aqm-mc__kpis" data-k="kpis"></div>
 	<h3>Side by side</h3>
@@ -128,7 +157,7 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 	<div class="aqm-mc__sched"><table data-k="sched"><thead></thead><tbody></tbody></table></div>
 </div>
 
-<p class="aqm-mc__note">Estimates for planning only, based on rules published as of September 2026. Rates, insurer rules, rebates and taxes change, and the new-home HST relief applies to agreements signed from 1 April 2026 to 31 March 2027 for a home you will live in. Canadian fixed-rate mortgages compound semi-annually; lenders may round differently. Land transfer tax shown for a property with one or two single-family homes. Legal fees, title insurance, adjustments and moving costs are not included. Confirm figures with your lender and real estate lawyer before you commit.</p>
+<p class="aqm-mc__note">Estimates for planning only, based on rules published as of September 2026. Rates, insurer rules, rebates and taxes change, and the new-home HST relief applies to agreements signed from 1 April 2026 to 31 March 2027 for a home you will live in. Canadian fixed-rate mortgages compound semi-annually; lenders may round differently. Land transfer tax shown for a property with one or two single-family homes. Other costs use typical amounts you can change; your lawyer's statement of adjustments will have the exact figures. Confirm figures with your lender and real estate lawyer before you commit.</p>
 </div>
 	<?php
 	return ob_get_clean();
