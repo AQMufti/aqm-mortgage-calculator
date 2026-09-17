@@ -74,3 +74,4 @@
 .aqm-mc__pick label{display:block;font-weight:600;font-size:.85rem;margin:0 0 5px}
 .aqm-mc__ratenote{font-size:.8rem;color:var(--muted);margin:12px 0 0}
 .aqm-mc__ratenote a{color:inherit}
+.aqm-mc__hint{display:block;font-size:.75rem;color:var(--muted);margin:4px 0 0;line-height:1.35}

@@ -89,22 +89,25 @@
 		var dollarLock = [false, false, false], state = { scen: 0, view: 'year' }, results = [], ctx = {};
 
 		/* Lender rates, when the site has any: a drop-down above each scenario's rate box. */
-		var RATES = (cfg.rates || []).filter(function (r) { return r && +r.rate > 0; });
+		var RATES = (cfg.rates || []).filter(function (r) { return r && +r.rate > 0; })
+			.sort(function (a, b) { return (+a.rate) - (+b.rate); }); // lowest rate first
 		if (RATES.length) {
-			var opts = '<option value="">Your own rate</option>' + RATES.map(function (r, i) {
-				return '<option value="' + i + '">' + r.lender + ' \u2013 ' + r.label + ': ' + (+r.rate).toFixed(2) + '%' + (r.stale ? ' (out of date)' : '') + '</option>';
+			var opts = '<option value="">Type my own rate</option>' + RATES.map(function (r, i) {
+				return '<option value="' + i + '">' + (+r.rate).toFixed(2) + '% \u2013 ' + r.lender + ' \u2013 ' + r.label + (r.stale ? ' (out of date)' : '') + '</option>';
 			}).join('');
 			scs.forEach(function (el, i) {
 				var box = document.createElement('div');
 				box.className = 'aqm-mc__pick';
-				box.innerHTML = '<label for="' + root.id + '-pick' + i + '">Use a published rate</label><select id="' + root.id + '-pick' + i + '" data-pick="' + i + '">' + opts + '</select>';
+				box.innerHTML = '<label for="' + root.id + '-pick' + i + '">Interest rate: pick a lender&rsquo;s rate\u2026</label>'
+					+ '<select id="' + root.id + '-pick' + i + '" data-pick="' + i + '">' + opts + '</select>'
+					+ '<span class="aqm-mc__hint">&hellip;or just type a rate in the Interest rate box below.</span>';
 				el.insertBefore(box, el.querySelector('.aqm-mc__two'));
 			});
 			var note = document.createElement('p');
 			note.className = 'aqm-mc__ratenote';
 			var srcs = [], seen = {};
 			RATES.forEach(function (r) { if (r.url && !seen[r.url]) { seen[r.url] = 1; srcs.push('<a href="' + r.url + '" target="_blank" rel="noopener nofollow">' + r.lender + '</a>'); } });
-			note.innerHTML = 'Rates shown are the lenders\u2019 own published rates, read on the dates listed, and rates typed in by A. Q. Mufti. They are not offers and nobody is approved at them: your rate depends on the lender, the property and you. Confirm any rate with the lender or a licensed mortgage agent.' + (srcs.length ? ' Sources: ' + srcs.join(', ') + '.' : '');
+			note.innerHTML = 'The rates in the drop-downs are the lenders\u2019 own published rates, read on the dates listed, and rates typed in by A. Q. Mufti. They are not offers and nobody is approved at them: your rate depends on the lender, the property and you. Confirm any rate with the lender or a licensed mortgage agent.' + (srcs.length ? ' Sources: ' + srcs.join(', ') + '.' : '');
 			root.querySelector('.aqm-mc__scen').parentNode.appendChild(note);
 		}
 

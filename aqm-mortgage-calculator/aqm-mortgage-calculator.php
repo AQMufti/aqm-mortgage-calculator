@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.5.2
+ * Version:     1.5.4
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,11 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.5.4 (17 Sep 2026): the drop-down reads rate first - "4.64% - Tangerine - 3-year fixed" - and is
+ * sorted lowest rate first.
+ * 1.5.3 (17 Sep 2026): clearer wording on the rate controls - the drop-down says "Type my own rate",
+ * is labelled "Interest rate: pick a lender's rate..." and carries a line saying a rate can simply be
+ * typed in the box below instead.
  * 1.5.2 (17 Sep 2026): tick-all buttons on the rates settings page - all, none, or all except the ones
  * flagged as looking wrong - plus a tick-all box in the table heading.
  * 1.5.1 (17 Sep 2026): requests now look like an ordinary visit (browser user agent, Accept and
@@ -64,7 +69,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.5.2' );
+define( 'AQM_MC_VERSION', '1.5.4' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
