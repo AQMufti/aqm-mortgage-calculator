@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.5.7
+ * Version:     1.5.8
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,10 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.5.8 (17 Sep 2026): two federal figures corrected. The Home Buyers' Amount is a credit at the
+ * lowest federal rate, and that rate was cut to 14% for 2026, so the $10,000 claim is worth $1,400,
+ * not the $1,500 shown (15% was right through 2024). And an RRSP Home Buyers' Plan withdrawal made
+ * between 2026 and 2028 does not start being repaid until the fifth year after the withdrawal year.
  * 1.5.7 (17 Sep 2026): the three Bank of Canada figures come out of the lender drop-down, where they
  * read as offers, and into a "Bank of Canada benchmark rates" box of their own, prime rate first.
  * 1.5.6 (17 Sep 2026): the rate drop-down sits directly above the Interest rate box instead of above
@@ -77,7 +81,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.5.7' );
+define( 'AQM_MC_VERSION', '1.5.8' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();

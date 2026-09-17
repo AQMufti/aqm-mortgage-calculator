@@ -271,8 +271,8 @@
 			} else {
 				li('no', 'New-home HST relief', 'Buying new from a builder? Tick "Newly built home": Ontario and federal relief can remove up to $130,000 of HST.');
 			}
-			li(c.ftb ? 'yes' : 'no', 'Home Buyers’ Amount (tax credit)', c.ftb ? 'Claim <em>$1,500</em> on your tax return for the year you buy.' : 'First-time buyers can claim a $1,500 federal tax credit.');
-			li(c.ftb ? 'yes' : 'no', 'FHSA and RRSP Home Buyers’ Plan', c.ftb ? 'FHSA: save up to $8,000 a year, $40,000 lifetime, tax-free for the down payment. RRSP: withdraw up to $60,000 each, repay over 15 years.' : 'Available to first-time buyers: FHSA savings up to $40,000 and RRSP withdrawals up to $60,000 each.');
+			li(c.ftb ? 'yes' : 'no', 'Home Buyers’ Amount (tax credit)', c.ftb ? 'Claim <em>$10,000</em> on your tax return for the year you buy. It is a credit at the lowest federal rate, so it is worth about <em>$1,400</em> off your 2026 federal tax (14% of $10,000).' : 'First-time buyers can claim $10,000, worth about $1,400 off their federal tax.');
+			li(c.ftb ? 'yes' : 'no', 'FHSA and RRSP Home Buyers’ Plan', c.ftb ? 'FHSA: save up to $8,000 a year, $40,000 lifetime, tax-free for the down payment. RRSP: withdraw up to $60,000 each and repay it over 15 years &mdash; if you withdraw between 2026 and 2028, repayments do not start until the fifth year after the year you withdraw.' : 'Available to first-time buyers: FHSA savings up to $40,000 and RRSP withdrawals up to $60,000 each.');
 			q('[data-k=programs]').innerHTML = items.join('');
 		}
 
