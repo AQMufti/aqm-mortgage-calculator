@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.5.6
+ * Version:     1.5.7
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,8 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.5.7 (17 Sep 2026): the three Bank of Canada figures come out of the lender drop-down, where they
+ * read as offers, and into a "Bank of Canada benchmark rates" box of their own, prime rate first.
  * 1.5.6 (17 Sep 2026): the rate drop-down sits directly above the Interest rate box instead of above
  * Down payment, so the two rate controls read as one.
  * 1.5.5 (17 Sep 2026): readers written for DUCA's and nesto's own pages, so their figures are right -
@@ -75,7 +77,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.5.6' );
+define( 'AQM_MC_VERSION', '1.5.7' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
@@ -103,7 +105,20 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 	static $n = 0; $n++;
 	$id  = 'aqm-mc-' . $n;
 	$rates = class_exists( 'AQM_MC_Rates' ) ? AQM_MC_Rates::listing() : array();
-	$cfg = array( 'price' => (float) $a['price'], 'rate' => (float) $a['rate'], 'amort' => (int) $a['amortization'], 'downs' => array( (float) $a['down1'], (float) $a['down2'], (float) $a['down3'] ), 'rates' => array_values( $rates ) );
+	// The Bank of Canada figures are benchmarks, not rates anyone can borrow at, so they are shown in
+	// their own box rather than in the lender drop-down, where they read as offers. Prime comes first:
+	// it is the rate every variable mortgage on the list is priced against.
+	$boc  = array();
+	$pick = array();
+	foreach ( $rates as $r ) {
+		if ( isset( $r['src'] ) && 'boc' === $r['src'] ) { $boc[] = $r; } else { $pick[] = $r; }
+	}
+	usort( $boc, function ( $x, $y ) {
+		$a = ( false !== stripos( $x['label'], 'prime' ) ) ? 0 : 1;
+		$b = ( false !== stripos( $y['label'], 'prime' ) ) ? 0 : 1;
+		return $a === $b ? ( (float) $x['rate'] <=> (float) $y['rate'] ) : $a - $b;
+	} );
+	$cfg = array( 'price' => (float) $a['price'], 'rate' => (float) $a['rate'], 'amort' => (int) $a['amortization'], 'downs' => array( (float) $a['down1'], (float) $a['down2'], (float) $a['down3'] ), 'rates' => array_values( $pick ) );
 	ob_start();
 	?>
 <div class="aqm-mc" id="<?php echo esc_attr( $id ); ?>" data-config="<?php echo esc_attr( wp_json_encode( $cfg ) ); ?>">
@@ -121,6 +136,22 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 		<div class="aqm-mc__hst" data-k="hstwrap"><label for="<?php echo $id; ?>-hst">The price above is</label><select id="<?php echo $id; ?>-hst" data-k="hstmode"><option value="incl">Builder's all-in price (HST included)</option><option value="plus">Before HST</option></select></div>
 	</div>
 </div>
+
+<?php if ( $boc ) : ?>
+<div class="aqm-mc__card aqm-mc__boc">
+	<h3>Bank of Canada benchmark rates</h3>
+	<ul>
+	<?php foreach ( $boc as $b ) : ?>
+		<li>
+			<b><?php echo esc_html( number_format( (float) $b['rate'], 2 ) ); ?>%</b>
+			<span><?php echo esc_html( preg_replace( '/\s*\((?:all chartered banks|chartered bank average)\)/i', '', $b['label'] ) ); ?></span>
+			<i>read <?php echo esc_html( $b['date'] ); ?><?php echo empty( $b['stale'] ) ? '' : ', out of date'; ?></i>
+		</li>
+	<?php endforeach; ?>
+	</ul>
+	<p>Benchmarks, not offers. Prime is the rate the variable mortgages below are priced against; the posted averages are what the chartered banks advertise before discounting, so almost nobody pays them. Source: <a href="https://www.bankofcanada.ca/rates/interest-rates/" target="_blank" rel="noopener nofollow">Bank of Canada</a>.</p>
+</div>
+<?php endif; ?>
 
 <div class="aqm-mc__card">
 	<h3>Compare three scenarios</h3>

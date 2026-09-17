@@ -75,3 +75,10 @@
 .aqm-mc__ratenote{font-size:.8rem;color:var(--muted);margin:12px 0 0}
 .aqm-mc__ratenote a{color:inherit}
 .aqm-mc__hint{display:block;font-size:.75rem;color:var(--muted);margin:4px 0 0;line-height:1.35}
+.aqm-mc__boc ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 18px;list-style:none;margin:0;padding:0}
+.aqm-mc__boc li{border-left:3px solid var(--red);padding:2px 0 2px 12px}
+.aqm-mc__boc li b{display:block;font-size:1.35rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.aqm-mc__boc li span{display:block;font-size:.85rem;font-weight:600}
+.aqm-mc__boc li i{display:block;font-size:.75rem;color:var(--muted);font-style:normal}
+.aqm-mc__boc>p{font-size:.8rem;color:var(--muted);margin:14px 0 0}
+.aqm-mc__boc>p a{color:inherit}
