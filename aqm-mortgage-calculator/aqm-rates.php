@@ -3,10 +3,26 @@
  * AQM Mortgage Calculator - lender rates.
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
- * Collects published mortgage rates once a day on this server and offers them in the calculator
- * as a drop-down. Nothing is taken from a rate-comparison site: each rate comes from the Bank of
- * Canada's own open data service or from a lender's own published rates page, and every entry
- * carries the lender's name, the date it was read and a link to that page.
+ * Collects published mortgage rates once a day on this server and offers them in the calculator as a
+ * drop-down. Nothing is taken from a rate-comparison site. Each rate comes from the lender itself:
+ *
+ *   Bank of Canada  its Valet open-data service (prime, posted chartered-bank averages)
+ *   TD              the rate service its own rates page reads (POST, ratesType resl)
+ *   CIBC            the rate file its own rates page reads (productRatesLegacy)
+ *   BMO             the JSON file its own rates page reads (bmo-ca-mortgages-rates.json)
+ *   Scotiabank      its dated daily posted-rate feed (dmtsms api)
+ *   Tangerine       the dated JSON file its own rates page reads
+ *   National Bank   the figures its own page carries, keyed by name
+ *   RBC, nesto, DUCA, Alterna Savings, FirstOntario, True North Mortgage, Manulife Bank,
+ *   Neo Financial, Vancity, Coast Capital - read from the wording of the rates page itself
+ *
+ * Not included, and why: Desjardins asks not to be read automatically (robots.txt), and Meridian,
+ * EQ Bank, B2B Bank and Community Trust block automated visits. Their rates can still be typed in by
+ * hand in the settings page.
+ *
+ * Every entry carries the lender's name, the date it was read and a link to that lender's page.
+ * The first five arrive as data, so the figure is unambiguous and is shown as read. The last two are
+ * read from a page written for people, so they are held until ticked (see below).
  *
  * Rates you are quoted personally are not published anywhere, so AQ can also type rates from his
  * mortgage agent into Settings -> AQM Mortgage Calculator; those are shown exactly as typed.
@@ -34,20 +50,104 @@ class AQM_MC_Rates {
 			'boc' => array(
 				'name' => 'Bank of Canada',
 				'url'  => 'https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/',
-				'note' => 'official figures for all chartered banks',
 				'fn'   => 'parse_boc',
 				'api'  => 'https://www.bankofcanada.ca/valet/observations/V80691311,V80691334,V80691335/json?recent=1',
 			),
-			'nesto' => array(
-				'name' => 'nesto',
-				'url'  => 'https://www.nesto.ca/mortgage-rates/',
-				'note' => 'lowest rates nesto publishes',
-				'fn'   => 'parse_terms',
+			'td' => array(
+				'name' => 'TD Canada Trust',
+				'url'  => 'https://www.td.com/ca/en/personal-banking/products/mortgages/mortgage-rates',
+				'fn'   => 'parse_td',
+				'api'  => 'https://psservice.td.com/ca/en/carate/getRates',
+				'post' => '{"errorText":"Unable to get the rate","ratesType":"resl"}',
+			),
+			'cibc' => array(
+				'name' => 'CIBC',
+				'url'  => 'https://www.cibc.com/en/personal-banking/mortgages/mortgage-rates.html',
+				'fn'   => 'parse_cibc',
+				'api'  => 'https://www.cibconline.cibc.com/ebm-pno/api/v1/json/productRatesLegacy?lobId=5&sourceProductCode=FRCM%2C5YRVARCLO%2C',
+			),
+			'bmo' => array(
+				'name' => 'BMO',
+				'url'  => 'https://www.bmo.com/main/personal/mortgages/mortgage-rates/',
+				'fn'   => 'parse_bmo',
+				'api'  => 'https://www.bmo.com/public-data/api/v2.0/bmo-ca-mortgages-rates.json',
+			),
+			'scotia' => array(
+				'name' => 'Scotiabank',
+				'url'  => 'https://www.scotiabank.com/ca/en/personal/rates-prices/mortgages-rates.html',
+				'fn'   => 'parse_scotia',
+				'api'  => 'https://dmtsms.scotiabank.com/api/rates/daily/nonspecialmortgage',
+			),
+			'tangerine' => array(
+				'name' => 'Tangerine',
+				'url'  => 'https://www.tangerine.ca/en/rates/mortgage-rates',
+				'fn'   => 'parse_tangerine',
+				'api'  => 'https://www.tangerine.ca/content/dam/tangerine-shared/product-rates/currentRates.json',
+			),
+			'nbc' => array(
+				'name' => 'National Bank',
+				'url'  => 'https://www.nbc.ca/personal/mortgages/rates.html',
+				'fn'   => 'parse_nbc',
+				'api'  => 'https://www.nbc.ca/personal/mortgages/rates.html',
 			),
 			'rbc' => array(
 				'name' => 'RBC Royal Bank',
 				'url'  => 'https://www.rbcroyalbank.com/mortgages/mortgage-rates.html',
 				'note' => 'RBC special offers',
+				'fn'   => 'parse_terms',
+			),
+			'duca' => array(
+				'name' => 'DUCA Credit Union',
+				'url'  => 'https://www.duca.com/rates/',
+				'note' => 'published rates',
+				'fn'   => 'parse_terms',
+			),
+			'alterna' => array(
+				'name' => 'Alterna Savings',
+				'url'  => 'https://www.alterna.ca/en/rates/mortgages',
+				'note' => 'published rates',
+				'fn'   => 'parse_terms',
+			),
+			'firstontario' => array(
+				'name' => 'FirstOntario Credit Union',
+				'url'  => 'https://www.firstontario.com/rates',
+				'note' => 'published rates',
+				'fn'   => 'parse_terms',
+			),
+			'truenorth' => array(
+				'name' => 'True North Mortgage',
+				'url'  => 'https://www.truenorthmortgage.ca/rates',
+				'note' => 'published rates',
+				'fn'   => 'parse_terms',
+			),
+			'manulife' => array(
+				'name' => 'Manulife Bank',
+				'url'  => 'https://www.manulifebank.ca/current-rates.html',
+				'note' => 'posted rates',
+				'fn'   => 'parse_terms',
+			),
+			'neo' => array(
+				'name' => 'Neo Financial',
+				'url'  => 'https://www.neofinancial.com/mortgage',
+				'note' => 'published rates',
+				'fn'   => 'parse_terms',
+			),
+			'vancity' => array(
+				'name' => 'Vancity',
+				'url'  => 'https://www.vancity.com/rates/',
+				'note' => 'published rates',
+				'fn'   => 'parse_terms',
+			),
+			'coastcapital' => array(
+				'name' => 'Coast Capital',
+				'url'  => 'https://www.coastcapitalsavings.com/rates/mortgages',
+				'note' => 'published rates',
+				'fn'   => 'parse_terms',
+			),
+			'nesto' => array(
+				'name' => 'nesto',
+				'url'  => 'https://www.nesto.ca/mortgage-rates/',
+				'note' => 'lowest rates nesto publishes',
 				'fn'   => 'parse_terms',
 			),
 		);
@@ -136,8 +236,15 @@ class AQM_MC_Rates {
 		$items = array();
 		$log   = array();
 		foreach ( self::sources() as $key => $src ) {
-			$url = isset( $src['api'] ) ? $src['api'] : $src['url'];
-			$res = wp_remote_get( $url, array( 'timeout' => 25, 'redirection' => 3, 'user-agent' => 'AQM Mortgage Calculator/' . AQM_MC_VERSION . ' (+' . home_url() . ')' ) );
+			$url  = isset( $src['api'] ) ? $src['api'] : $src['url'];
+			$args = array( 'timeout' => 25, 'redirection' => 3, 'user-agent' => 'AQM Mortgage Calculator/' . AQM_MC_VERSION . ' (+' . home_url() . ')' );
+			if ( isset( $src['post'] ) ) {
+				$args['body']    = $src['post'];
+				$args['headers'] = array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' );
+				$res = wp_remote_post( $url, $args );
+			} else {
+				$res = wp_remote_get( $url, $args );
+			}
 			$code = is_wp_error( $res ) ? 0 : (int) wp_remote_retrieve_response_code( $res );
 			if ( 200 !== $code ) {
 				$log[ $key ] = is_wp_error( $res ) ? $res->get_error_message() : 'HTTP ' . $code;
@@ -200,9 +307,130 @@ class AQM_MC_Rates {
 	 * A lender's own rates page: takes the FIRST rate it publishes for each term and type, which is
 	 * the rate at the top of the page (the one being offered), not the posted rates further down.
 	 */
+	/**
+	 * TD publishes its rates as data for its own page: a map of product codes to
+	 * [posted, discount, offered rate, APR, flag]. MTGF036C is the 3-year fixed closed,
+	 * MTGF060C the 5-year fixed closed and MTGV060C the 5-year variable closed.
+	 */
+	public static function parse_td( $body, $key, $src ) {
+		$d = json_decode( $body, true );
+		if ( ! is_array( $d ) ) { return array(); }
+		$want = array(
+			'MTGF036C' => array( '3-year fixed (special offer)', 2 ),
+			'MTGF060C' => array( '5-year fixed (special offer)', 2 ),
+			'MTGV060C' => array( '5-year variable (special offer)', 2 ),
+			'MTGF060C_posted' => array( '5-year fixed (posted)', 0 ),
+		);
+		$rows = array();
+		foreach ( $want as $code => $x ) {
+			$real = str_replace( '_posted', '', $code );
+			$vals = isset( $d[ $real ]['nonHighRatio'] ) ? $d[ $real ]['nonHighRatio'] : null;
+			if ( ! is_array( $vals ) || ! isset( $vals[ $x[1] ] ) ) { continue; }
+			$rows[] = self::row( $src, $key, $x[0], $vals[ $x[1] ] );
+		}
+		return array_filter( $rows );
+	}
+
+	/**
+	 * CIBC serves its page rates as JavaScript variables: rows of
+	 * [term, null, rate code, rate]. Code 1 is the posted rate, code 18 the special offer.
+	 */
+	public static function parse_cibc( $body, $key, $src ) {
+		$i = strpos( $body, 'var FRCM' );
+		if ( false === $i ) { return array(); }
+		$j    = strpos( $body, 'var ', $i + 4 );
+		$block = ( false === $j ) ? substr( $body, $i ) : substr( $body, $i, $j - $i );
+		if ( ! preg_match_all( "/\\['(\\d+)_[^']*',\\s*null,\\s*(\\d+),\\s*'([\\-\\d.]+)'/", $block, $m, PREG_SET_ORDER ) ) { return array(); }
+		$want = array( '3|18' => '3-year fixed (special offer)', '5|18' => '5-year fixed (special offer)', '5|1' => '5-year fixed (posted)' );
+		$rows = array();
+		foreach ( $m as $x ) {
+			$id = $x[1] . '|' . $x[2];
+			if ( isset( $want[ $id ] ) ) { $rows[] = self::row( $src, $key, $want[ $id ], $x[3] ); }
+		}
+		return array_filter( $rows );
+	}
+
+	/** BMO publishes the rates on its page as a plain JSON file. */
+	public static function parse_bmo( $body, $key, $src ) {
+		$d = json_decode( $body, true );
+		if ( ! is_array( $d ) ) { return array(); }
+		$want = array(
+			'fixed3YearClosedSpecial'     => '3-year fixed (special offer)',
+			'smartFixed5YearClosedSpecial' => '5-year fixed (special offer)',
+			'variable5YearClosedSpecial'  => '5-year variable (special offer)',
+		);
+		$rows = array();
+		foreach ( $want as $field => $label ) {
+			if ( isset( $d[ $field ] ) ) { $rows[] = self::row( $src, $key, $label, $d[ $field ] ); }
+		}
+		return array_filter( $rows );
+	}
+
+	/** Scotiabank publishes its posted mortgage rates as dated JSON. */
+	public static function parse_scotia( $body, $key, $src ) {
+		$d = json_decode( $body, true );
+		if ( ! isset( $d['data'] ) || ! is_array( $d['data'] ) ) { return array(); }
+		$when = isset( $d['update_time'] ) ? strtotime( $d['update_time'] ) : time();
+		$rows = array();
+		foreach ( $d['data'] as $product ) {
+			if ( empty( $product['TERMS'] ) || false === stripos( (string) $product['PRODUCT'], 'N.H.A' ) ) { continue; }
+			foreach ( $product['TERMS'] as $t ) {
+				if ( 'Y' !== ( isset( $t['TERM_UNIT'] ) ? $t['TERM_UNIT'] : '' ) ) { continue; }
+				$term = (int) $t['TERM_VALUE'];
+				if ( 3 !== $term && 5 !== $term ) { continue; }
+				$rows[] = self::row( $src, $key, $term . '-year fixed (posted)', isset( $t['RATE'] ) ? $t['RATE'] : 0, $when );
+			}
+		}
+		return array_filter( $rows );
+	}
+
+	/** One rate row, or null when the figure is not a believable mortgage rate. */
+	public static function row( $src, $key, $label, $rate, $when = null ) {
+		$rate = round( (float) $rate, 2 );
+		if ( $rate < 1 || $rate > 15 ) { return null; }
+		return array(
+			'lender' => $src['name'],
+			'label'  => $label,
+			'rate'   => $rate,
+			'url'    => $src['url'],
+			'time'   => $when ? $when : time(),
+			'src'    => $key,
+		);
+	}
+
+	/** Tangerine publishes every rate its pages show in one dated JSON file. */
+	public static function parse_tangerine( $body, $key, $src ) {
+		$d = json_decode( $body, true );
+		if ( ! isset( $d['rates'] ) || ! is_array( $d['rates'] ) ) { return array(); }
+		$rows = array();
+		foreach ( $d['rates'] as $r ) {
+			if ( ! isset( $r['group'] ) || 'mortgage' !== $r['group'] ) { continue; }
+			$term = isset( $r['term'] ) ? (int) $r['term'] : 0;
+			if ( 3 !== $term && 5 !== $term ) { continue; }
+			$var  = ( false !== stripos( (string) ( isset( $r['product_description'] ) ? $r['product_description'] : '' ), 'variable' ) )
+				|| ( false !== stripos( (string) ( isset( $r['account_term'] ) ? $r['account_term'] : '' ), 'variable' ) );
+			$when = isset( $r['date'] ) ? strtotime( str_replace( '-', '/', $r['date'] ) ) : time(); // MM-DD-YYYY
+			$rows[] = self::row( $src, $key, $term . '-year ' . ( $var ? 'variable' : 'fixed' ), isset( $r['interest_rate'] ) ? $r['interest_rate'] : 0, $when ? $when : time() );
+		}
+		return array_filter( $rows );
+	}
+
+	/** National Bank builds its table from figures that sit in the page itself, keyed by name. */
+	public static function parse_nbc( $body, $key, $src ) {
+		$want = array( 'tauxPromo3ansF' => '3-year fixed (special offer)', 'tauxPromo5ansF' => '5-year fixed (special offer)' );
+		$rows = array();
+		foreach ( $want as $field => $label ) {
+			if ( preg_match( '/' . $field . '[^0-9]{0,40}(\d{1,2})[.,](\d{1,3})/', $body, $m ) ) {
+				$rows[] = self::row( $src, $key, $label, $m[1] . '.' . $m[2] );
+			}
+		}
+		return array_filter( $rows );
+	}
+
 	public static function parse_terms( $body, $key, $src ) {
 		$text = self::text( $body );
-		if ( ! preg_match_all( '/(\d{1,2})\s*[-\x{2010}-\x{2015}\s]?\s*year\s+(fixed|variable)/iu', $text, $m, PREG_OFFSET_CAPTURE | PREG_SET_ORDER ) ) { return array(); }
+		$rx = '/(\d{1,2})\s*[-\x{2010}-\x{2015}\s]?\s*(?:year|yr)s?\b[^%\d]{0,28}?\b(fixed|variable)/iu';
+		if ( ! preg_match_all( $rx, $text, $m, PREG_OFFSET_CAPTURE | PREG_SET_ORDER ) ) { return array(); }
 		$want = array( '3 fixed', '5 fixed', '5 variable' );
 		$seen = array();
 		$rows = array();
@@ -332,6 +560,7 @@ class AQM_MC_Rates {
 			echo '<li><strong>' . esc_html( $src['name'] ) . '</strong> &mdash; <a href="' . esc_url( $src['url'] ) . '" target="_blank" rel="noopener">' . esc_html( wp_parse_url( $src['url'], PHP_URL_HOST ) ) . '</a>: ' . esc_html( $state ) . '</li>';
 		}
 		echo '</ul>';
+		echo '<p class="description">Desjardins asks not to be read automatically, and Meridian, EQ Bank, B2B Bank and Community Trust block automated visits, so they are not listed. Type their rates in above if you want them.</p>';
 		echo '<p class="description">Read once a day. A rate is only ever a starting point for the calculator: it is not an offer, and it is not a rate you or a visitor has been approved for. Rates quoted to a buyer depend on the lender, the property and the buyer.</p>';
 		echo '<p><button type="submit" form="aqm-mc-form" class="button button-primary">Save settings</button> <button type="submit" form="aqm-mc-form" name="refresh" value="1" class="button">Save and read rates now</button></p>';
 		echo '<p class="description">Last read: ' . ( isset( $store['time'] ) ? esc_html( date_i18n( 'j M Y, g:i a', (int) $store['time'] ) ) : 'never' ) . '. Next: ' . ( wp_next_scheduled( self::CRON ) ? esc_html( date_i18n( 'j M Y, g:i a', wp_next_scheduled( self::CRON ) ) ) : 'not scheduled' ) . '.</p>';
