@@ -24,31 +24,171 @@
 	];
 
 	/* ---------------------------------------------------------------- rules */
+	/* The mortgage itself is federal and the same everywhere: minimum down payment, the $1.5M
+	   insured cap, the CMHC premium bands and the 0.20% surcharge past 25 years. Everything below
+	   it is provincial, and the provinces disagree about the SHAPE of the tax, not just the rate:
+	   six charge no transfer tax at all but a land titles fee, and Quebec and Nova Scotia set
+	   theirs municipally. Every figure was read off the government's own page on 17 Sep 2026. */
 	var R = {
 		cap: 1500000,
 		minDown: function (p) { if (p >= 1500000) { return p * 0.2; } if (p <= 500000) { return p * 0.05; } return 25000 + (p - 500000) * 0.1; },
 		premRate: function (ltv) { if (ltv <= 0.8) { return 0; } if (ltv <= 0.85) { return 0.028; } if (ltv <= 0.9) { return 0.031; } if (ltv <= 0.95) { return 0.04; } return null; },
-		ON: [[55000, 0.005], [250000, 0.01], [400000, 0.015], [2000000, 0.02], [Infinity, 0.025]],
-		TO: [[55000, 0.005], [250000, 0.01], [400000, 0.015], [2000000, 0.02], [3000000, 0.025], [4000000, 0.044], [5000000, 0.0545], [10000000, 0.065], [20000000, 0.0755], [Infinity, 0.086]],
-		onRefund: 4000, toRebate: 4475
+		checked: '17 Sep 2026'
 	};
 	function brackets(p, b) { var t = 0, prev = 0; for (var i = 0; i < b.length; i++) { if (p > prev) { t += (Math.min(p, b[i][0]) - prev) * b[i][1]; } prev = b[i][0]; } return t; }
 	function taper(p, from, to, hi, lo) { if (p <= from) { return hi; } if (p >= to) { return lo; } return hi - (hi - lo) * (p - from) / (to - from); }
+	function bracketTax(b) { return function (p) { return brackets(p, b); }; }
+	function flatTax(r) { return function (p) { return p * r; }; }
+	/* A land titles fee of "$base plus $per for every $step of value, or part of a step". */
+	function stepFee(base, per, step) { return function (p) { return p > 0 ? base + Math.ceil(p / step) * per : 0; }; }
 
-	/* New-home HST on a price before HST (b). Returns the tax, the relief and the net. */
-	function hstFor(b, ftb) {
-		var fed = b * 0.05, prov = b * 0.08;
-		var onFed = Math.min(fed, taper(b, 1500000, 1850000, 50000, 0));
+	var JUR = {
+		on: {
+			name: 'Ontario (outside Toronto)', short: 'Ontario',
+			taxName: 'Ontario land transfer tax',
+			tax: bracketTax([[55000, 0.005], [250000, 0.01], [400000, 0.015], [2000000, 0.02], [Infinity, 0.025]]),
+			ftbName: 'Ontario first-time buyer refund', ftbMax: 'up to $4,000',
+			ftb: function (p, t) { return Math.min(4000, t); },
+			pst: 0.08, pstName: 'Ontario RST on the CMHC premium (8%)',
+			nhTax: 0.08, nhName: 'HST', nhRate: '13%',
+			nhRelief: function (b, prov) { return Math.min(prov, taper(b, 1500000, 1850000, 80000, 24000)); },
+			nhReliefNote: 'Ontario removes the whole 8% provincial part up to $1.5 million, to a maximum of $80,000, reducing to $24,000 at $1.85 million. Agreements 1 Apr 2026 to 31 Mar 2027.'
+		},
+		to: {
+			name: 'City of Toronto', short: 'Toronto',
+			taxName: 'Ontario land transfer tax',
+			tax: bracketTax([[55000, 0.005], [250000, 0.01], [400000, 0.015], [2000000, 0.02], [Infinity, 0.025]]),
+			ftbName: 'Ontario first-time buyer refund', ftbMax: 'up to $4,000',
+			ftb: function (p, t) { return Math.min(4000, t); },
+			muniName: 'Toronto land transfer tax',
+			muni: bracketTax([[55000, 0.005], [250000, 0.01], [400000, 0.015], [2000000, 0.02], [3000000, 0.025], [4000000, 0.044], [5000000, 0.0545], [10000000, 0.065], [20000000, 0.0755], [Infinity, 0.086]]),
+			muniFtbName: 'Toronto first-time buyer rebate', muniFtbMax: 'up to $4,475',
+			muniFtb: function (p, t) { return Math.min(4475, t); },
+			pst: 0.08, pstName: 'Ontario RST on the CMHC premium (8%)',
+			nhTax: 0.08, nhName: 'HST', nhRate: '13%',
+			nhRelief: function (b, prov) { return Math.min(prov, taper(b, 1500000, 1850000, 80000, 24000)); },
+			nhReliefNote: 'Ontario removes the whole 8% provincial part up to $1.5 million, to a maximum of $80,000, reducing to $24,000 at $1.85 million. Agreements 1 Apr 2026 to 31 Mar 2027.'
+		},
+		bc: {
+			name: 'British Columbia', short: 'B.C.',
+			taxName: 'Property transfer tax',
+			tax: bracketTax([[200000, 0.01], [2000000, 0.02], [3000000, 0.03], [Infinity, 0.05]]),
+			ftbName: 'First-time buyer exemption', ftbMax: 'full to $500,000, then $8,000, nil at $860,000',
+			ftb: function (p, t) { return p <= 500000 ? t : Math.min(t, taper(p, 835000, 860000, 8000, 0)); },
+			nbExName: 'Newly built home exemption', nbExMax: 'full to $1.1 million, nil at $1.15 million',
+			nbEx: function (p, t) { return Math.min(t, taper(p, 1100000, 1150000, t, 0)); },
+			pst: 0, nhTax: 0, nhName: 'GST', nhRate: '5%'
+		},
+		ab: {
+			name: 'Alberta', short: 'Alberta',
+			taxName: 'Land titles registration fee', noTax: true,
+			tax: stepFee(50, 5, 5000),
+			mtgFee: stepFee(50, 5, 5000),
+			pst: 0, nhTax: 0, nhName: 'GST', nhRate: '5%'
+		},
+		sk: {
+			name: 'Saskatchewan', short: 'Saskatchewan',
+			taxName: 'Land titles registration fee', noTax: true,
+			tax: function (p) { return p <= 500 ? 0 : p <= 6300 ? 25 : p * 0.004; },
+			taxNote: 'Saskatchewan has no land transfer tax. This fee is published by ISC, which runs the registry, rather than on a Government of Saskatchewan page.',
+			credit: 'Saskatchewan gives first-time buyers a non-refundable income tax credit worth up to $1,575, rather than money off at closing.',
+			pst: 0.06, pstName: 'Saskatchewan PST on the CMHC premium (6%)',
+			nhTax: 0, nhName: 'GST', nhRate: '5%'
+		},
+		mb: {
+			name: 'Manitoba', short: 'Manitoba',
+			taxName: 'Land transfer tax',
+			tax: bracketTax([[30000, 0], [90000, 0.005], [150000, 0.01], [200000, 0.015], [Infinity, 0.02]]),
+			pst: 0, nhTax: 0, nhName: 'GST', nhRate: '5%',
+			credit: 'Manitoba has no first-time buyer land transfer tax rebate. Mortgage insurance premiums are exempt from its 7% sales tax.'
+		},
+		qc: {
+			name: 'Quebec', short: 'Quebec',
+			taxName: 'Transfer duties (the &ldquo;welcome tax&rdquo;)',
+			tax: bracketTax([[62900, 0.005], [315000, 0.01], [Infinity, 0.015]]),
+			taxNote: 'These are the province-wide base rates. The duties are set by each municipality, and any of them may charge more on the part above $500,000 &mdash; up to 3%, and Montreal to 4%. Check your city before relying on this figure.',
+			credit: 'Quebec refunds the welcome tax through a refundable tax credit instead: up to $5,875, phasing out from $750,000 and gone at $1 million. Montreal closed its own rebate in July 2026 when this replaced it.',
+			pst: 0.09, pstName: 'Quebec tax on the CMHC premium (9%)',
+			pstNote: 'Quebec&rsquo;s tax on insurance premiums rises to 9.975% for premiums paid after 31 December 2026.',
+			nhTax: 0.09975, nhName: 'GST and QST', nhRate: '5% + 9.975%',
+			nhRelief: function (b, prov) { var r = Math.min(prov * 0.5, 9975); return b <= 200000 ? r : taper(b, 200000, 300000, r, 0); },
+			nhReliefNote: 'Quebec rebates half the QST, to a maximum of $9,975, in full up to $200,000 and nothing at $300,000.'
+		},
+		nb: {
+			name: 'New Brunswick', short: 'New Brunswick',
+			taxName: 'Real property transfer tax', tax: flatTax(0.01),
+			pst: 0, nhTax: 0.10, nhName: 'HST', nhRate: '15%'
+		},
+		ns: {
+			name: 'Nova Scotia', short: 'Nova Scotia',
+			taxName: 'Deed transfer tax', tax: flatTax(0.015),
+			taxNote: 'Nova Scotia&rsquo;s deed transfer tax is set by each municipality and runs from 1.0% to 1.5%. Shown here at 1.5%, which Halifax, Cape Breton and most others charge. Check your municipality.',
+			pst: 0, nhTax: 0.09, nhName: 'HST', nhRate: '14%',
+			nhRelief: function (b, prov, ftb) { return ftb ? Math.min(prov * 0.1875, 3000) : 0; },
+			nhReliefNote: 'Nova Scotia rebates 18.75% of the provincial part of the HST to first-time buyers of a newly built home, to a maximum of $3,000.'
+		},
+		pe: {
+			name: 'Prince Edward Island', short: 'P.E.I.',
+			taxName: 'Real property transfer tax',
+			tax: function (p) { return p <= 30000 ? 0 : p * 0.01; },
+			ftbName: 'First-time buyer exemption', ftbMax: 'the whole tax, at any price',
+			ftb: function (p, t) { return t; },
+			pst: 0, nhTax: 0.10, nhName: 'HST', nhRate: '15%'
+		},
+		nl: {
+			name: 'Newfoundland and Labrador', short: 'N.L.',
+			taxName: 'Registry of Deeds fee', noTax: true,
+			tax: function (p) { return p <= 500 ? 0 : 100 + Math.ceil((p - 500) / 100) * 0.4; },
+			pst: 0, nhTax: 0.10, nhName: 'HST', nhRate: '15%'
+		},
+		yt: {
+			name: 'Yukon', short: 'Yukon',
+			taxName: 'Land titles fee', noTax: true,
+			tax: function (p) {
+				var reg = p < 100000 ? 50 : p < 500000 ? 150 : p < 3000000 ? 350 : p < 10000000 ? 550 : 750;
+				return reg + (p > 0 ? 20 + Math.max(0, Math.ceil(p / 10000) - 1) * 10 : 0);
+			},
+			taxNote: 'The assurance fund part is charged on the increase in declared value since the last transfer, so it is shown here on the full price &mdash; the real figure is usually lower.',
+			pst: 0, nhTax: 0, nhName: 'GST', nhRate: '5%'
+		},
+		nt: {
+			name: 'Northwest Territories', short: 'N.W.T.',
+			taxName: 'Land titles fee', noTax: true,
+			tax: function (p) { return p <= 0 ? 0 : p <= 1000000 ? Math.max(100, Math.ceil(p / 1000) * 2) : 2000 + Math.ceil((p - 1000000) / 1000) * 1.5; },
+			mtgFee: function (L) { return L <= 0 ? 0 : Math.max(80, Math.ceil(L / 1000) * 1.5); },
+			pst: 0, nhTax: 0, nhName: 'GST', nhRate: '5%'
+		},
+		nu: {
+			name: 'Nunavut', short: 'Nunavut',
+			taxName: 'Land titles fee', noTax: true, tax: function () { return 0; },
+			taxNote: 'Nunavut charges no land transfer tax, but its land titles fee could not be read from a Government of Nunavut page and is shown as nil. Ask your lawyer for the figure.',
+			pst: 0, nhTax: 0, nhName: 'GST', nhRate: '5%'
+		}
+	};
+	var JORDER = ['on', 'to', 'bc', 'ab', 'sk', 'mb', 'qc', 'nb', 'ns', 'pe', 'nl', 'yt', 'nt', 'nu'];
+	function jur(code) { return JUR[code] || JUR.on; }
+
+	/* Sales tax on a new home from a builder, on a price before tax (b).
+	   Federal: the New Housing Rebate (36% of the federal part, max $6,300, full to $350,000 and
+	   nothing at $450,000) plus, for a first-time buyer, the federal First-Time Home Buyers' GST
+	   rebate (up to $50,000, full to $1 million, nothing at $1.5 million). The two stack, but never
+	   beyond the federal tax itself. The provincial part is whatever that province gives back. */
+	function hstFor(b, ftb, j) {
+		j = j || JUR.on;
+		var fed = b * 0.05, prov = b * (j.nhTax || 0);
+		var nhr = Math.min(fed * 0.36, 6300);
+		nhr = taper(b, 350000, 450000, nhr, 0);
 		var fthb = ftb ? Math.min(fed, taper(b, 1000000, 1500000, 50000, 0)) : 0;
-		var fedRelief = Math.max(onFed, fthb);
-		var provRelief = Math.min(prov, taper(b, 1500000, 1850000, 80000, 24000));
+		var fedRelief = Math.min(fed, nhr + fthb);
+		var provRelief = j.nhRelief ? Math.min(prov, j.nhRelief(b, prov, ftb)) : 0;
 		return { base: b, fed: fed, prov: prov, fedRelief: fedRelief, provRelief: provRelief, fthb: fthb, net: fed + prov - fedRelief - provRelief };
 	}
-	/* The builder's all-in price (a) = base + net HST. Solve for the base. */
-	function hstFromAllIn(a, ftb) {
-		var lo = a / 1.13, hi = a, mid, h;
-		for (var i = 0; i < 60; i++) { mid = (lo + hi) / 2; h = hstFor(mid, ftb); if (mid + h.net > a) { hi = mid; } else { lo = mid; } }
-		return hstFor(lo, ftb);
+	/* The builder's all-in price (a) = base + net tax. Solve for the base. */
+	function hstFromAllIn(a, ftb, j) {
+		j = j || JUR.on;
+		var lo = a / (1 + 0.05 + (j.nhTax || 0)), hi = a, mid, h;
+		for (var i = 0; i < 60; i++) { mid = (lo + hi) / 2; h = hstFor(mid, ftb, j); if (mid + h.net > a) { hi = mid; } else { lo = mid; } }
+		return hstFor(lo, ftb, j);
 	}
 	function periodic(annual, perYear) { return Math.pow(1 + annual / 2, 2 / perYear) - 1; }
 	function pmt(L, r, n) { if (L <= 0 || n <= 0) { return 0; } if (r === 0) { return L / n; } return L * r / (1 - Math.pow(1 + r, -n)); }
@@ -114,6 +254,13 @@
 			root.querySelector('.aqm-mc__scen').parentNode.appendChild(note);
 		}
 
+		/* Build the places list from the jurisdiction table, so the two can never drift apart. */
+		(function () {
+			var sel = q('[data-k=loc]');
+			sel.innerHTML = JORDER.map(function (k) { return '<option value="' + k + '">' + JUR[k].name + '</option>'; }).join('');
+			sel.value = JUR[cfg.loc] ? cfg.loc : 'on';
+		}());
+
 		q('[data-k=price]').value = N0.format(cfg.price || 850000);
 		scs.forEach(function (el, i) {
 			q('[data-k=dpct]', el).value = String((cfg.downs || [10, 15, 20])[i]);
@@ -141,13 +288,21 @@
 			var entered = parseNum(q('[data-k=price]').value), loc = q('[data-k=loc]').value, fv = q('[data-k=freq]').value;
 			var term = +q('[data-k=term]').value, ftb = q('[data-k=ftb]').checked, nb = q('[data-k=newbuild]').checked, hm = q('[data-k=hstmode]').value;
 			q('[data-k=hstwrap]').classList.toggle('is-on', nb);
+			var J = jur(loc);
 			var hst = null, price = entered;
 			if (nb && entered > 0) {
-				if (hm === 'plus') { hst = hstFor(entered, ftb); price = entered + hst.net; } else { hst = hstFromAllIn(entered, ftb); }
+				if (hm === 'plus') { hst = hstFor(entered, ftb, J); price = entered + hst.net; } else { hst = hstFromAllIn(entered, ftb, J); }
 			}
 			var perYear = parseInt(fv, 10), accel = /a$/.test(fv);
-			var ltt = brackets(price, R.ON), ontRebate = ftb ? Math.min(R.onRefund, ltt) : 0;
-			var mltt = loc === 'to' ? brackets(price, R.TO) : 0, torRebate = (ftb && loc === 'to') ? Math.min(R.toRebate, mltt) : 0;
+			var ltt = J.tax(price);
+			/* B.C.'s two exemptions are mutually exclusive, so take whichever is worth more. */
+			var ontRebate = Math.max(
+				(ftb && J.ftb) ? J.ftb(price, ltt) : 0,
+				(nb && J.nbEx) ? J.nbEx(price, ltt) : 0
+			);
+			var usedNbEx = J.nbEx && nb && ontRebate > ((ftb && J.ftb) ? J.ftb(price, ltt) : 0);
+			var mltt = J.muni ? J.muni(price) : 0;
+			var torRebate = (ftb && J.muniFtb) ? J.muniFtb(price, mltt) : 0;
 			var colCost = [0, 1, 2].map(function (i) {
 				var at = 0, before = 0;
 				qa('[data-cost][data-col="' + i + '"]').forEach(function (el) {
@@ -156,7 +311,7 @@
 				});
 				return { at: at, before: before };
 			});
-			ctx = { entered: entered, price: price, loc: loc, fv: fv, term: term, ftb: ftb, nb: nb, hm: hm, hst: hst, ltt: ltt, ontRebate: ontRebate, mltt: mltt, torRebate: torRebate };
+			ctx = { entered: entered, price: price, loc: loc, J: J, fv: fv, term: term, ftb: ftb, nb: nb, hm: hm, hst: hst, ltt: ltt, ontRebate: ontRebate, usedNbEx: usedNbEx, mltt: mltt, torRebate: torRebate };
 
 			results = scs.map(function (el, i) {
 				var dp = q('[data-k=dpct]', el), dd = q('[data-k=ddol]', el);
@@ -175,7 +330,8 @@
 					}
 				}
 				if (rate <= 0) { warn.push('Enter an interest rate.'); }
-				var prem = base * pr, loan = base + prem, pst = prem * 0.08;
+				var prem = base * pr, loan = base + prem, pst = prem * (J.pst || 0);
+				var mtgFee = J.mtgFee ? J.mtgFee(loan) : 0;
 				var monthly = pmt(loan, periodic(rate, 12), 12 * amort);
 				var r = periodic(rate, perYear), pay = accel ? (perYear === 26 ? monthly / 2 : monthly / 4) : pmt(loan, r, perYear * amort);
 				var rows = [], bal = loan, cumI = 0, k = 0, guard = perYear * 40;
@@ -192,9 +348,9 @@
 					down: down, pct: price > 0 ? down / price * 100 : 0, min: min, pr: pr, prem: prem, pst: pst, loan: loan, pay: pay, monthly: monthly, rows: rows, perYear: perYear,
 					tI: tI, tP: tP, tPay: tPay, balTerm: termRows.length ? termRows[termRows.length - 1].bal : loan, totI: cumI, totPaid: cumI + loan,
 					payoff: rows.length / perYear, years: Math.max(1, Math.ceil(rows.length / perYear)), amort: amort, rate: rate, insured: insured,
-					atCost: colCost[i].at, beforeCost: colCost[i].before,
-					closing: down + ltt - ontRebate + mltt - torRebate + pst + colCost[i].at,
-					cash: down + ltt - ontRebate + mltt - torRebate + pst + colCost[i].at + colCost[i].before
+					atCost: colCost[i].at, beforeCost: colCost[i].before, mtgFee: mtgFee,
+					closing: down + ltt - ontRebate + mltt - torRebate + pst + mtgFee + colCost[i].at,
+					cash: down + ltt - ontRebate + mltt - torRebate + pst + mtgFee + colCost[i].at + colCost[i].before
 				};
 			});
 			renderKpis(); renderCompare(); renderPrograms(); renderChart(); renderSched();
@@ -242,11 +398,12 @@
 				+ group('Cash needed at closing')
 				+ '<tr class="aqm-mc__notes"><td colspan="4">Typical amounts are filled in below the taxes; type over any of them, per scenario, to match your quotes.</td></tr>'
 				+ row('Down payment', function (x) { return M0.format(x.down); })
-				+ same('Ontario land transfer tax', M0.format(ctx.ltt))
-				+ (ctx.ftb ? same('Ontario first-time buyer refund', '-' + M0.format(ctx.ontRebate)) : '')
-				+ (ctx.loc === 'to' ? same('Toronto land transfer tax', M0.format(ctx.mltt)) : '')
-				+ (ctx.loc === 'to' && ctx.ftb ? same('Toronto first-time buyer rebate', '-' + M0.format(ctx.torRebate)) : '')
-				+ row('PST on CMHC premium (8%)', function (x) { return M0.format(x.pst); });
+				+ same(ctx.J.taxName, M0.format(ctx.ltt))
+				+ (ctx.ontRebate > 0 ? same(ctx.usedNbEx ? ctx.J.nbExName : ctx.J.ftbName, '-' + M0.format(ctx.ontRebate)) : '')
+				+ (ctx.J.muni ? same(ctx.J.muniName, M0.format(ctx.mltt)) : '')
+				+ (ctx.J.muni && ctx.torRebate > 0 ? same(ctx.J.muniFtbName, '-' + M0.format(ctx.torRebate)) : '')
+				+ (ctx.J.pst ? row(ctx.J.pstName, function (x) { return M0.format(x.pst); }) : '')
+				+ (ctx.J.mtgFee ? row('Mortgage registration fee', function (x) { return M0.format(x.mtgFee); }) : '');
 			q('[data-part=top]').innerHTML = out;
 			q('[data-part=mid]').innerHTML = row('Total due at closing', function (x) { return M0.format(x.closing); }, 'aqm-mc__em')
 				+ group('Paid before closing')
@@ -263,13 +420,28 @@
 				'Minimum for this price: <em>' + M0.format(Math.ceil(R.minDown(c.price))) + '</em> (5% of the first $500,000, 10% of the rest up to $1.5 million). Mortgage insurance, and so less than 20% down, is available up to <em>$1,499,999</em>.');
 			li(c.ftb || c.nb ? 'yes' : 'no', '30-year amortization with less than 20% down',
 				c.ftb || c.nb ? 'Available: ' + (c.ftb && c.nb ? 'first-time buyer and new build' : (c.ftb ? 'first-time buyer' : 'new build')) + '. Insurance premium is 0.20% higher than at 25 years.' : 'Only for first-time buyers or new builds. With 20% or more down, any buyer can choose 30 years.');
-			li(c.ftb ? 'yes' : 'no', 'Ontario land transfer tax refund', c.ftb ? 'Up to $4,000: <em>' + M0.format(c.ontRebate) + '</em> for this price.' : 'First-time buyers get up to $4,000 back.');
-			if (c.loc === 'to') { li(c.ftb ? 'yes' : 'no', 'Toronto land transfer tax rebate', c.ftb ? 'Up to $4,475: <em>' + M0.format(c.torRebate) + '</em> for this price.' : 'First-time buyers get up to $4,475 back.'); }
+			var J = c.J;
+			if (J.ftb) {
+				li(c.ftb ? 'yes' : 'no', J.ftbName + ' (' + J.short + ')',
+					c.ftb ? (J.ftbMax.charAt(0).toUpperCase() + J.ftbMax.slice(1)) + ': <em>' + M0.format((J.ftb(c.price, c.ltt))) + '</em> for this price.'
+						  : 'First-time buyers get ' + J.ftbMax + '.');
+			} else if (!J.noTax) {
+				li('no', 'First-time buyer relief (' + J.short + ')', J.credit || (J.short + ' gives first-time buyers no rebate on the ' + J.taxName.toLowerCase() + '.'));
+			}
+			if (J.nbEx) {
+				li(c.nb ? 'yes' : 'no', J.nbExName + ' (' + J.short + ')',
+					(c.nb ? 'Worth <em>' + M0.format(J.nbEx(c.price, c.ltt)) + '</em> at this price: ' : 'Tick &ldquo;Newly built home&rdquo; above. ') + J.nbExMax + '. Open to any buyer, not just first-time buyers, and you take this or the first-time buyer exemption &mdash; whichever is worth more.');
+			}
+			if (J.muni) { li(c.ftb ? 'yes' : 'no', J.muniFtbName, c.ftb ? J.muniFtbMax.charAt(0).toUpperCase() + J.muniFtbMax.slice(1) + ': <em>' + M0.format(c.torRebate) + '</em> for this price.' : 'First-time buyers get ' + J.muniFtbMax + ' back.'); }
+			if (J.credit && J.ftb) { li('note', 'Also in ' + J.short, J.credit); }
+			if (J.noTax) { li('yes', 'No land transfer tax in ' + J.short, 'You pay a land titles fee instead, which is far smaller. ' + (J.taxNote || '')); }
+			if (J.taxNote && !J.noTax) { li('note', 'Set by your municipality', J.taxNote); }
+			if (J.pstNote) { li('note', 'Tax on the insurance premium', J.pstNote); }
 			if (c.nb && c.hst) {
-				li(c.hst.fedRelief + c.hst.provRelief > 0 ? 'yes' : 'no', 'New-home HST relief (agreements 1 Apr 2026 to 31 Mar 2027)',
-					'Estimated <em>' + M0.format(c.hst.fedRelief + c.hst.provRelief) + '</em> of <em>' + M0.format(c.hst.fed + c.hst.prov) + '</em> HST on ' + M0.format(c.hst.base) + ' before tax: all 13% up to $1 million, up to $130,000 to $1.5 million, reducing to $24,000 at $1.85 million. For a home you will live in; builders usually credit it in the price.');
+				li(c.hst.fedRelief + c.hst.provRelief > 0 ? 'yes' : 'no', 'New-home ' + J.nhName + ' relief',
+					'Estimated <em>' + M0.format(c.hst.fedRelief + c.hst.provRelief) + '</em> of <em>' + M0.format(c.hst.fed + c.hst.prov) + '</em> ' + J.nhName + ' (' + J.nhRate + ') on ' + M0.format(c.hst.base) + ' before tax. Federally, the New Housing Rebate gives back 36% of the 5% GST to a maximum of $6,300, gone at $450,000; a first-time buyer also gets up to $50,000 more, in full to $1 million and nothing at $1.5 million. ' + (J.nhReliefNote || (J.short + ' adds nothing of its own.')) + ' For a home you will live in; builders usually credit it in the price.');
 			} else {
-				li('no', 'New-home HST relief', 'Buying new from a builder? Tick "Newly built home": Ontario and federal relief can remove up to $130,000 of HST.');
+				li('no', 'New-home ' + J.nhName + ' relief', 'Buying new from a builder? Tick &ldquo;Newly built home&rdquo; above to see the ' + J.nhName + ' and what comes back.');
 			}
 			li(c.ftb ? 'yes' : 'no', 'Home Buyers’ Amount (tax credit)', c.ftb ? 'Claim <em>$10,000</em> on your tax return for the year you buy. It is a credit at the lowest federal rate, so it is worth about <em>$1,400</em> off your 2026 federal tax (14% of $10,000).' : 'First-time buyers can claim $10,000, worth about $1,400 off their federal tax.');
 			li(c.ftb ? 'yes' : 'no', 'FHSA and RRSP Home Buyers’ Plan', c.ftb ? 'FHSA: save up to $8,000 a year, $40,000 lifetime, tax-free for the down payment. RRSP: withdraw up to $60,000 each and repay it over 15 years &mdash; if you withdraw between 2026 and 2028, repayments do not start until the fifth year after the year you withdraw.' : 'Available to first-time buyers: FHSA savings up to $40,000 and RRSP withdrawals up to $60,000 each.');

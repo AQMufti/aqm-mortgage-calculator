@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: AQM Mortgage Calculator
- * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.5.8
+ * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
+ * Version:     1.6.0
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,22 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.6.0 (17 Sep 2026): the calculator is Canadian, not Ontario-only. "Where you are buying" now lists
+ * every province and territory plus the City of Toronto, and the closing costs follow it. The mortgage
+ * itself was already national and is unchanged. What the province decides now comes from one table:
+ *   - Land transfer tax in four shapes: brackets (BC, MB, ON, QC), a flat 1% (NB, PE), a municipal
+ *     rate (NS, and QC's duties), and - in AB, SK, NL, YT, NT and NU - no transfer tax at all but a
+ *     land titles fee, each with its own formula. Showing nil in those six would have been wrong.
+ *   - First-time buyer relief in five shapes: a refund (ON, Toronto), an exemption that phases out
+ *     (BC), a full exemption at any price (PE), an income tax credit rather than closing cash (SK, QC),
+ *     and nothing at all (AB, MB, NB, NT). BC's newly built exemption is open to every buyer and is
+ *     mutually exclusive with its first-time buyer one, so the calculator takes whichever is worth more.
+ *   - Tax on the CMHC premium in ON (8%), QC (9%) and SK (6%) only. Manitoba exempted it in 2020.
+ *   - New-home sales tax at each province's rate, with the federal New Housing Rebate and the federal
+ *     First-Time Home Buyers' GST rebate everywhere, plus ON, QC and NS's own rebates.
+ * Quebec and Nova Scotia set their tax municipally: the base rate is shown with a note naming the
+ * limits, pending a municipality picker. Nunavut's land titles fee could not be read from a Government
+ * of Nunavut page and is shown as nil, said plainly on the page.
  * 1.5.8 (17 Sep 2026): two federal figures corrected. The Home Buyers' Amount is a credit at the
  * lowest federal rate, and that rate was cut to 14% for 2026, so the $10,000 claim is worth $1,400,
  * not the $1,500 shown (15% was right through 2024). And an RRSP Home Buyers' Plan withdrawal made
@@ -76,19 +92,22 @@
  *    tapering to $24,000 at $1.85M; federal 5% covered up to $50,000 to $1.5M (Ontario New Home
  *    Affordability Payment), tapering to $0 at $1.85M. Federal First-Time Home Buyers' GST rebate:
  *    100% up to $50,000 to $1M, tapering to $0 at $1.5M.
- *  - First-time buyer programs shown for information: Home Buyers' Amount ($10,000 x 15% = $1,500 tax
- *    credit), FHSA ($8,000 a year, $40,000 lifetime), RRSP Home Buyers' Plan ($60,000 per person).
+ *  - First-time buyer programs shown for information: Home Buyers' Amount ($10,000 claimed, worth
+ *    $1,400 at the 2026 lowest federal rate of 14%), FHSA ($8,000 a year, $40,000 lifetime), RRSP
+ *    Home Buyers' Plan ($60,000 per person; a withdrawal made 2026-2028 starts repaying in year five).
+ *  - Every other province's figures, and their sources, are in the jurisdiction table at the top of
+ *    assets/aqm-mc.js. All read from the government's own pages on 17 Sep 2026.
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.5.8' );
+define( 'AQM_MC_VERSION', '1.6.0' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
 
 if ( file_exists( __DIR__ . '/aqm-updater.php' ) ) {
 	require_once __DIR__ . '/aqm-updater.php';
-	new AQM_Updater( __FILE__, AQM_MC_VERSION, 'AQMufti/aqm-mortgage-calculator', 'AQM Mortgage Calculator', 'Canadian mortgage calculator for Ontario and Toronto buyers.' );
+	new AQM_Updater( __FILE__, AQM_MC_VERSION, 'AQMufti/aqm-mortgage-calculator', 'AQM Mortgage Calculator', 'Canadian mortgage calculator for every province and territory.' );
 }
 
 add_action( 'wp_enqueue_scripts', function () {
@@ -103,7 +122,7 @@ add_action( 'wp_enqueue_scripts', function () {
 } );
 
 add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
-	$a = shortcode_atts( array( 'price' => '850000', 'rate' => '4.19', 'amortization' => '25', 'down1' => '10', 'down2' => '15', 'down3' => '20' ), $atts );
+	$a = shortcode_atts( array( 'price' => '850000', 'rate' => '4.19', 'amortization' => '25', 'down1' => '10', 'down2' => '15', 'down3' => '20', 'location' => 'on' ), $atts );
 	wp_enqueue_style( 'aqm-mc' );
 	wp_enqueue_script( 'aqm-mc' );
 	static $n = 0; $n++;
@@ -122,7 +141,7 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 		$b = ( false !== stripos( $y['label'], 'prime' ) ) ? 0 : 1;
 		return $a === $b ? ( (float) $x['rate'] <=> (float) $y['rate'] ) : $a - $b;
 	} );
-	$cfg = array( 'price' => (float) $a['price'], 'rate' => (float) $a['rate'], 'amort' => (int) $a['amortization'], 'downs' => array( (float) $a['down1'], (float) $a['down2'], (float) $a['down3'] ), 'rates' => array_values( $pick ) );
+	$cfg = array( 'price' => (float) $a['price'], 'rate' => (float) $a['rate'], 'amort' => (int) $a['amortization'], 'downs' => array( (float) $a['down1'], (float) $a['down2'], (float) $a['down3'] ), 'loc' => sanitize_key( $a['location'] ), 'rates' => array_values( $pick ) );
 	ob_start();
 	?>
 <div class="aqm-mc" id="<?php echo esc_attr( $id ); ?>" data-config="<?php echo esc_attr( wp_json_encode( $cfg ) ); ?>">
@@ -132,7 +151,7 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 	<h3>The property</h3>
 	<div class="aqm-mc__shared">
 		<div><label for="<?php echo $id; ?>-price">Purchase price</label><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" id="<?php echo $id; ?>-price" data-k="price" data-fmt="money"></div></div>
-		<div><label for="<?php echo $id; ?>-loc">Location</label><select id="<?php echo $id; ?>-loc" data-k="loc"><option value="on">Ontario (outside Toronto)</option><option value="to">City of Toronto</option></select></div>
+		<div><label for="<?php echo $id; ?>-loc">Where you are buying</label><select id="<?php echo $id; ?>-loc" data-k="loc"><option value="on">Ontario (outside Toronto)</option></select></div>
 		<div><label for="<?php echo $id; ?>-freq">Payment frequency</label><select id="<?php echo $id; ?>-freq" data-k="freq"><option value="12">Monthly</option><option value="24">Semi-monthly</option><option value="26">Bi-weekly</option><option value="26a">Accelerated bi-weekly</option><option value="52">Weekly</option><option value="52a">Accelerated weekly</option></select></div>
 		<div><label for="<?php echo $id; ?>-term">Mortgage term</label><select id="<?php echo $id; ?>-term" data-k="term"><?php foreach ( array( 1, 2, 3, 4, 5, 7, 10 ) as $t ) { echo '<option value="' . $t . '"' . ( 5 === $t ? ' selected' : '' ) . '>' . $t . ( 1 === $t ? ' year' : ' years' ) . '</option>'; } ?></select></div>
 		<label class="aqm-mc__chk"><input type="checkbox" data-k="ftb"> First-time home buyer</label>

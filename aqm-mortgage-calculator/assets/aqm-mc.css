@@ -49,6 +49,7 @@
 .aqm-mc__prog li.is-yes{border-left-color:#2e7d32}
 .aqm-mc__prog li.is-no{border-left-color:#bdbdbd;color:var(--muted)}
 .aqm-mc__prog li.is-warn{border-left-color:var(--red)}
+.aqm-mc__prog li.is-note{border-left-color:#8a6d1f;background:#fdfaf1}
 .aqm-mc__prog b{display:block;margin-bottom:2px;color:var(--ink)}
 .aqm-mc__prog em{font-style:normal;font-weight:700}
 .aqm-mc__kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
