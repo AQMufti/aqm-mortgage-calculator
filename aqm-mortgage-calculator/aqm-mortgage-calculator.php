@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.6.0
+ * Version:     1.7.0
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,15 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.7.0 (17 Sep 2026): two changes, both for the same reason - this is meant to become a desktop
+ * and mobile app, and Canadian tax law must never be written out twice.
+ *   - The rules move into assets/aqm-mc-core.js, which knows nothing about WordPress or the
+ *     browser: no DOM, no jQuery, no dependencies. It loads as a browser global or as a module, so
+ *     an app can use the same file unchanged. aqm-mc.js is now only the screen. One copy of the
+ *     jurisdiction table, in one file, for every place it is ever shown.
+ *   - Quebec and Nova Scotia get the municipality picker they need, because both set their transfer
+ *     tax municipally: Montreal (to 4%), Quebec City (to 3%) and the province-wide base for
+ *     everywhere else; and for Nova Scotia the 1.0% and 1.5% municipalities by name.
  * 1.6.0 (17 Sep 2026): the calculator is Canadian, not Ontario-only. "Where you are buying" now lists
  * every province and territory plus the City of Toronto, and the closing costs follow it. The mortgage
  * itself was already national and is unchanged. What the province decides now comes from one table:
@@ -100,7 +109,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.6.0' );
+define( 'AQM_MC_VERSION', '1.7.0' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
@@ -113,7 +122,8 @@ if ( file_exists( __DIR__ . '/aqm-updater.php' ) ) {
 add_action( 'wp_enqueue_scripts', function () {
 	$v = function ( $f ) { $p = __DIR__ . '/assets/' . $f; return AQM_MC_VERSION . '.' . ( file_exists( $p ) ? filemtime( $p ) : 0 ); };
 	wp_register_style( 'aqm-mc', plugins_url( 'assets/aqm-mc.css', __FILE__ ), array(), $v( 'aqm-mc.css' ) );
-	wp_register_script( 'aqm-mc', plugins_url( 'assets/aqm-mc.js', __FILE__ ), array(), $v( 'aqm-mc.js' ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
+	wp_register_script( 'aqm-mc-core', plugins_url( 'assets/aqm-mc-core.js', __FILE__ ), array(), $v( 'aqm-mc-core.js' ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
+	wp_register_script( 'aqm-mc', plugins_url( 'assets/aqm-mc.js', __FILE__ ), array( 'aqm-mc-core' ), $v( 'aqm-mc.js' ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
 	global $post;
 	if ( $post instanceof WP_Post && has_shortcode( (string) $post->post_content, 'aqm_mortgage_calculator' ) ) {
 		wp_enqueue_style( 'aqm-mc' );
