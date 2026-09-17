@@ -1,4 +1,4 @@
-/* AQM Mortgage Calculator 1.2.2 - Copyright (c) 2026 A. Q. Mufti. All rights reserved.
+/* AQM Mortgage Calculator 1.3.0 - Copyright (c) 2026 A. Q. Mufti. All rights reserved.
    Rules and sources are listed in aqm-mortgage-calculator.php */
 (function () {
 	'use strict';
@@ -87,6 +87,26 @@
 		var qa = function (s, c) { return Array.prototype.slice.call((c || root).querySelectorAll(s)); };
 		var scs = qa('.aqm-mc__sc');
 		var dollarLock = [false, false, false], state = { scen: 0, view: 'year' }, results = [], ctx = {};
+
+		/* Lender rates, when the site has any: a drop-down above each scenario's rate box. */
+		var RATES = (cfg.rates || []).filter(function (r) { return r && +r.rate > 0; });
+		if (RATES.length) {
+			var opts = '<option value="">Your own rate</option>' + RATES.map(function (r, i) {
+				return '<option value="' + i + '">' + r.lender + ' \u2013 ' + r.label + ': ' + (+r.rate).toFixed(2) + '%' + (r.stale ? ' (out of date)' : '') + '</option>';
+			}).join('');
+			scs.forEach(function (el, i) {
+				var box = document.createElement('div');
+				box.className = 'aqm-mc__pick';
+				box.innerHTML = '<label for="' + root.id + '-pick' + i + '">Use a published rate</label><select id="' + root.id + '-pick' + i + '" data-pick="' + i + '">' + opts + '</select>';
+				el.insertBefore(box, el.querySelector('.aqm-mc__two'));
+			});
+			var note = document.createElement('p');
+			note.className = 'aqm-mc__ratenote';
+			var srcs = [], seen = {};
+			RATES.forEach(function (r) { if (r.url && !seen[r.url]) { seen[r.url] = 1; srcs.push('<a href="' + r.url + '" target="_blank" rel="noopener nofollow">' + r.lender + '</a>'); } });
+			note.innerHTML = 'Rates shown are the lenders\u2019 own published rates, read on the dates listed, and rates typed in by A. Q. Mufti. They are not offers and nobody is approved at them: your rate depends on the lender, the property and you. Confirm any rate with the lender or a licensed mortgage agent.' + (srcs.length ? ' Sources: ' + srcs.join(', ') + '.' : '');
+			root.querySelector('.aqm-mc__scen').parentNode.appendChild(note);
+		}
 
 		q('[data-k=price]').value = N0.format(cfg.price || 850000);
 		scs.forEach(function (el, i) {
@@ -324,9 +344,17 @@
 			if (t.hasAttribute('data-fmt')) { liveFormat(t); }
 			var sc = t.closest('.aqm-mc__sc');
 			if (sc) { var i = +sc.getAttribute('data-s'); if (k === 'ddol') { dollarLock[i] = true; } else if (k === 'dpct') { dollarLock[i] = false; } }
+			if (sc && k === 'rate') { var pk = q('[data-pick]', sc); if (pk) { pk.value = ''; } }
 			compute();
 		});
-		root.addEventListener('change', function () { compute(); });
+		root.addEventListener('change', function (e) {
+			var p = e.target.getAttribute && e.target.getAttribute('data-pick');
+			if (p !== null && p !== undefined) {
+				var r = RATES[+e.target.value];
+				if (r) { q('[data-k=rate]', scs[+p]).value = (+r.rate).toFixed(2); }
+			}
+			compute();
+		});
 		root.addEventListener('focusout', function (e) {
 			var t = e.target;
 			if (!t.hasAttribute || !t.hasAttribute('data-fmt')) { return; }

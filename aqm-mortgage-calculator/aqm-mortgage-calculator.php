@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.2.2
+ * Version:     1.3.1
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,14 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.3.1 (17 Sep 2026): a rate read from a lender's page is held back until it is ticked in
+ * Settings -> AQM Mortgage Calculator; only the Bank of Canada data feed publishes itself. Reading a
+ * page can go wrong - nesto's variable rate was read as its fixed rate - so nothing goes to visitors
+ * unchecked. Reading a rate also now ignores "Prime -1.00%" discounts and looks above the label as
+ * well as below it.
+ * 1.3.0 (17 Sep 2026): a rate drop-down in each scenario, filled once a day from the Bank of Canada's
+ * open data and from lenders' own published rate pages (never from a rate-comparison site), plus rates
+ * typed in by hand. Every rate shows the lender, the date read and a link. Settings -> AQM Mortgage Calculator.
  * 1.2.2 (17 Sep 2026): copyright notice and a full disclaimer under the calculator.
  * 1.2.1 (17 Sep 2026): the other costs are edited right in the side-by-side table, one amount box per
  * scenario, filled with typical amounts; both Miscellaneous rows always show, with an editable name (suggested: Survey, Utility hook-ups;
@@ -45,7 +53,10 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.2.2' );
+define( 'AQM_MC_VERSION', '1.3.1' );
+define( 'AQM_MC_FILE', __FILE__ );
+require_once __DIR__ . '/aqm-rates.php';
+AQM_MC_Rates::boot();
 
 if ( file_exists( __DIR__ . '/aqm-updater.php' ) ) {
 	require_once __DIR__ . '/aqm-updater.php';
@@ -69,7 +80,8 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 	wp_enqueue_script( 'aqm-mc' );
 	static $n = 0; $n++;
 	$id  = 'aqm-mc-' . $n;
-	$cfg = array( 'price' => (float) $a['price'], 'rate' => (float) $a['rate'], 'amort' => (int) $a['amortization'], 'downs' => array( (float) $a['down1'], (float) $a['down2'], (float) $a['down3'] ) );
+	$rates = class_exists( 'AQM_MC_Rates' ) ? AQM_MC_Rates::listing() : array();
+	$cfg = array( 'price' => (float) $a['price'], 'rate' => (float) $a['rate'], 'amort' => (int) $a['amortization'], 'downs' => array( (float) $a['down1'], (float) $a['down2'], (float) $a['down3'] ), 'rates' => array_values( $rates ) );
 	ob_start();
 	?>
 <div class="aqm-mc" id="<?php echo esc_attr( $id ); ?>" data-config="<?php echo esc_attr( wp_json_encode( $cfg ) ); ?>">
