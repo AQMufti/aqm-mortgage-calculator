@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator for Ontario and Toronto buyers: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and its Ontario sales tax, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home HST relief, Ontario and Toronto land transfer tax with first-time buyer rebates, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.5.5
+ * Version:     1.5.6
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,8 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.5.6 (17 Sep 2026): the rate drop-down sits directly above the Interest rate box instead of above
+ * Down payment, so the two rate controls read as one.
  * 1.5.5 (17 Sep 2026): readers written for DUCA's and nesto's own pages, so their figures are right -
  * DUCA is read from its Low Rate Mortgage table alone, nesto from the per-product data its page
  * publishes for search engines. The first drop-down choice now reads "Type my own rate in the box
@@ -73,7 +75,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.5.5' );
+define( 'AQM_MC_VERSION', '1.5.6' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();

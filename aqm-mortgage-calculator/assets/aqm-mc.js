@@ -101,7 +101,10 @@
 				box.innerHTML = '<label for="' + root.id + '-pick' + i + '">Interest rate: pick a lender&rsquo;s rate\u2026</label>'
 					+ '<select id="' + root.id + '-pick' + i + '" data-pick="' + i + '">' + opts + '</select>'
 					+ '<span class="aqm-mc__hint">&hellip;or just type a rate in the Interest rate box below.</span>';
-				el.insertBefore(box, el.querySelector('.aqm-mc__two'));
+				// Sit the picker directly above the Interest rate box, not above Down payment, so the
+				// two rate controls read as one thing and "the box below" means the box below.
+				var rateRow = el.querySelector('[data-k=rate]').closest('.aqm-mc__two');
+				el.insertBefore(box, rateRow || el.querySelector('.aqm-mc__two'));
 			});
 			var note = document.createElement('p');
 			note.className = 'aqm-mc__ratenote';
