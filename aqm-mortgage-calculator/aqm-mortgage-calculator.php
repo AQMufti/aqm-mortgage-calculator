@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.9.4
+ * Version:     1.9.5
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,15 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.9.5 (18 Sep 2026): the app says when a newer version is ready. From 1.9.4 a reload always lands
+ * on the current version, but nothing told anyone to reload: a service worker update installs quietly
+ * while the page in front of you goes on being served by the old one, so you can sit a version behind
+ * without a hint that you are. A charcoal bar now appears when an update has installed, with a Reload
+ * button. It does NOT reload by itself - taking the page out from under someone mid-calculation to
+ * save them a click is not a trade worth making. A first-ever install is excluded, since calling that
+ * "a newer version" would be false; the controller is captured before registering to tell the two
+ * apart. Detection dispatches a plain event that the bar listens for, so the bar can be tested
+ * without a real service worker, which no headless page can install.
  * 1.9.4 (18 Sep 2026): the app could serve an old version of itself, indefinitely.
  *   - Everything the service worker cached carried ?v=<version>.<mtime> in its URL, so a cache hit
  *     was current by construction - EXCEPT the shell. /mortgage-app/ is the same address in every
@@ -183,7 +192,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.9.4' );
+define( 'AQM_MC_VERSION', '1.9.5' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();

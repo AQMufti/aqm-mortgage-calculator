@@ -194,6 +194,10 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 .aqm-app__install button:focus-visible{outline:2px solid #393939;outline-offset:2px}
 .aqm-app__share{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.18em;padding:1px;border:1px solid #bdbdbd;border-radius:4px;box-sizing:content-box}
 .aqm-app__aside{display:block;margin-top:6px;font-size:.82rem;color:#6b6b6b}
+.aqm-app__update{display:none;align-items:center;gap:12px;flex-wrap:wrap;background:#fafafa;border:1px solid #e2e2e2;border-left:3px solid #393939;border-radius:6px;padding:10px 14px;margin:12px 16px;font-size:.88rem;color:#393939}
+.aqm-app__update.is-on{display:flex}
+.aqm-app__update button{margin-left:auto;background:#393939;color:#fff;border:0;border-radius:6px;padding:8px 16px;font-size:.88rem;font-weight:600;cursor:pointer}
+.aqm-app__update button:focus-visible{outline:2px solid #A62021;outline-offset:2px}
 @media (max-width:760px){.aqm-app__wrap{padding:10px}.aqm-mc__card{padding:14px}}
 </style>
 </head>
@@ -201,6 +205,7 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 <div class="aqm-app__bar">AQM Mortgage Calculator<a href="<?php echo $site; ?>">aqmuftirealty.com</a></div>
 <div class="aqm-app__off" id="aqm-app-off">You are offline. The rates below are the last ones this app downloaded &mdash; each shows the date it was read.</div>
 <div class="aqm-app__install" id="aqm-app-install" role="note"><span id="aqm-app-installtxt"></span></div>
+<div class="aqm-app__update" id="aqm-app-update" role="status"><span>A newer version of this calculator is ready.</span><button type="button" id="aqm-app-reload">Reload</button></div>
 <div class="aqm-app__wrap"><?php echo $body; ?></div>
 <script src="<?php echo esc_url( $core ); ?>"></script>
 <script src="<?php echo esc_url( $ui ); ?>"></script>
@@ -209,9 +214,49 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 	var off = document.getElementById('aqm-app-off');
 	function net() { off.className = 'aqm-app__off' + (navigator.onLine ? '' : ' is-on'); }
 	window.addEventListener('online', net); window.addEventListener('offline', net); net();
+	/* ------------------------------------------------- a newer version is ready
+	   The shell is network-first from 1.9.4, so a reload always lands on the current version. What
+	   a reload cannot do is announce itself: a service worker update installs quietly while the page
+	   you are looking at goes on being served by the old one. So the page says so, and offers the
+	   reload rather than performing it - taking the page out from under someone mid-calculation to
+	   save them one click is not a trade worth making.
+
+	   The detection dispatches a plain event and the bar listens for it. That keeps the two testable
+	   apart: the bar's behaviour can be exercised without a real service worker, which no headless
+	   harness can install from a file:// page. */
+	var upd = document.getElementById('aqm-app-update');
+	window.addEventListener('aqm-mc-update-ready', function () {
+		if (upd.className.indexOf('is-on') > -1) { return; }
+		upd.className = 'aqm-app__update is-on';
+	});
+	document.getElementById('aqm-app-reload').addEventListener('click', function () { location.reload(); });
+
 	if ('serviceWorker' in navigator) {
+		/* Captured BEFORE registering. A first-ever install also changes the controller, and calling
+		   that "a newer version" on someone's first visit would be a lie. */
+		var hadController = !!navigator.serviceWorker.controller;
+
 		navigator.serviceWorker.register('<?php echo $sw; ?>', { scope: '<?php echo $scope; ?>' })
+			.then(function (reg) {
+				if (!reg) { return; }
+				reg.addEventListener('updatefound', function () {
+					var w = reg.installing;
+					if (!w) { return; }
+					w.addEventListener('statechange', function () {
+						/* Reaching "installed" while a worker is already in control means an update,
+						   not a first install. */
+						if (w.state === 'installed' && navigator.serviceWorker.controller) {
+							window.dispatchEvent(new Event('aqm-mc-update-ready'));
+						}
+					});
+				});
+				try { reg.update(); } catch (e) { /* nothing to check against */ }
+			})
 			.catch(function (e) { /* an app that cannot cache still works online */ });
+
+		navigator.serviceWorker.addEventListener('controllerchange', function () {
+			if (hadController) { window.dispatchEvent(new Event('aqm-mc-update-ready')); }
+		});
 	}
 
 	/* ---------------------------------------------------------------- installing
