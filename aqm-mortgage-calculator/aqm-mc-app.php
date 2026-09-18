@@ -27,11 +27,22 @@
  *
  * WHAT THE APP CACHES, AND WHAT IT REFUSES TO
  *
- * The shell, the rules and the styles are cached and served from cache - they only change when the
- * plugin version changes, which changes their URLs. The RATES are fetched from the network first
- * and only fall back to the cached copy when there is no signal, because a stale rate shown as
- * current is the one failure this whole rate system exists to prevent. Every rate carries the date
- * it was read, so an offline copy says how old it is rather than pretending.
+ * The rules and the styles are cached and served from cache, because their URLs carry the version
+ * and the file's timestamp - a new release means a new URL, so a cache hit is current by
+ * construction.
+ *
+ * TWO THINGS ARE DELIBERATELY NOT CACHE-FIRST, and for the same reason: their URLs never change.
+ *
+ *   - The RATES, because a stale rate shown as a current one is the single failure this whole rate
+ *     system exists to prevent. Every rate carries the date it was read, so an offline copy says how
+ *     old it is rather than pretending.
+ *   - The SHELL. /mortgage-app/ is the same address in every version, so a cache hit said nothing
+ *     about whether it was current. Served cache-first, a browser could sit on an old shell for
+ *     good - and with it, old ?v= links to old CSS and JS. That is not hypothetical: a desktop
+ *     screenshot showed the 1.9.0 shell after 1.9.3 had shipped.
+ *
+ * Both go to the network first and fall back to the cache, so offline is unchanged and a browser
+ * with a connection can never be a version behind.
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -273,9 +284,16 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 			/* Anything that never fires the event - Firefox, desktop Safari, or a Chrome that has
 			   already been told no once. Said quietly, and only after giving the event its chance. */
 			setTimeout(function () {
-				show('<b>Install this calculator</b> to use it with no signal. In Chrome or Edge, open the '
-					+ 'browser menu and choose <b>Install</b>, or use the install icon in the address bar. '
-					+ 'In Safari on a Mac, use <b>File &rsaquo; Add to Dock</b>.', false);
+				/* Naming only Chrome and Edge here was no use to someone sitting in a third browser,
+				   which is what happened with Opera: Chromium underneath, but it does not fire the
+				   event, so this branch ran and then talked about browsers they were not using. No
+				   menu path is claimed for any browser that has not been checked - that is the same
+				   mistake the iPhone wording made. */
+				show('<b>Install this calculator</b> to use it with no signal. Open your browser&rsquo;s menu '
+					+ 'and look for <b>Install</b> &mdash; in Chrome and Edge it is there, or as an icon in the '
+					+ 'address bar, and in Safari on a Mac it is <b>File &rsaquo; Add to Dock</b>. '
+					+ '<span class="aqm-app__aside">Not every desktop browser can install a web app. If yours '
+					+ 'has no such option, Chrome or Edge will.</span>', false);
 			}, 2500);
 		}
 	}
@@ -304,6 +322,7 @@ function aqm_mc_service_worker() {
 var CACHE = 'aqm-mc-<?php echo esc_js( $build ); ?>';
 var PRECACHE = <?php echo $pre; ?>;
 var RATES = '<?php echo esc_js( $rates ); ?>';
+var SHELL = '<?php echo esc_js( $shell ); ?>';
 
 self.addEventListener('install', function (e) {
 	e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(PRECACHE); }).then(function () { return self.skipWaiting(); }));
@@ -319,6 +338,31 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
 	var req = e.request;
 	if (req.method !== 'GET') { return; }
+
+	/* THE SHELL IS THE ONE CACHED THING WHOSE URL NEVER CHANGES.
+	   Everything else carries ?v=<version>.<mtime>, so a new release means a new URL and a cache hit
+	   is current by construction. /mortgage-app/ does not: it is the same address in every version.
+	   Served cache-first, as it was until now, an installed or previously-visited browser could go on
+	   showing an OLD shell indefinitely - old markup, and old ?v= links to old CSS and JS with it.
+
+	   That is not hypothetical. A desktop screenshot showed the 1.9.0 shell after 1.9.3 shipped: no
+	   install bar, and the six-column layout that only the pre-1.9.3 stylesheet produces.
+
+	   So the shell now goes to the network first and falls back to the cache, exactly like the rates.
+	   It is a few KB, it is still precached, and offline is unaffected - the only thing that changes
+	   is that a browser with a connection can no longer be a version behind. */
+	if (req.mode === 'navigate' || req.url === SHELL || req.url === SHELL + '?') {
+		e.respondWith(
+			fetch(req).then(function (res) {
+				if (res && res.status === 200) {
+					var copy = res.clone();
+					caches.open(CACHE).then(function (c) { c.put(SHELL, copy); });
+				}
+				return res;
+			}).catch(function () { return caches.match(SHELL) || caches.match(req); })
+		);
+		return;
+	}
 
 	/* Rates: the network decides, and the cache is only the fallback. A rate shown as current when
 	   it is not is exactly the failure the whole rate system exists to prevent. */
@@ -342,8 +386,8 @@ self.addEventListener('fetch', function (e) {
 			}
 			return res;
 		}).catch(function () {
-			/* Offline and never seen: the shell is the one thing worth substituting. */
-			return req.mode === 'navigate' ? caches.match(PRECACHE[0]) : Response.error();
+			/* Navigations are handled above; anything else offline and never seen has no substitute. */
+				return Response.error();
 		});
 	}));
 });

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.9.3
+ * Version:     1.9.4
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,18 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.9.4 (18 Sep 2026): the app could serve an old version of itself, indefinitely.
+ *   - Everything the service worker cached carried ?v=<version>.<mtime> in its URL, so a cache hit
+ *     was current by construction - EXCEPT the shell. /mortgage-app/ is the same address in every
+ *     version, and it was served cache-first, so a browser that had ever loaded it could go on
+ *     showing that shell for good, along with the old ?v= links to old CSS and JS inside it. A
+ *     desktop screenshot showed the 1.9.0 shell after 1.9.3 had shipped: no install bar, and the
+ *     six-column layout only the pre-1.9.3 stylesheet produces. The shell is now network-first with
+ *     a cache fallback, exactly like the rates; offline is unchanged.
+ *   - The install fallback named only Chrome, Edge and Safari-on-Mac, which was no use in a third
+ *     browser. Opera is Chromium underneath but does not fire the install event, so that branch ran
+ *     and then talked about browsers the reader was not using. It now points at the browser's own
+ *     menu, and says plainly that not every desktop browser can install a web app.
  * 1.9.3 (18 Sep 2026): drop-downs stop cutting their own text off. Measured across phone widths in
  * the real app shell rather than reasoned about, which found more than the rate picker:
  *   - The shared grid's 170px floor let it go two-up at about 430px, handing each control ~181px.
@@ -171,7 +183,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.9.3' );
+define( 'AQM_MC_VERSION', '1.9.4' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
