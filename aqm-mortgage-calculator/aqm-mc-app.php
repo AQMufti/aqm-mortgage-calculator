@@ -74,6 +74,22 @@ function aqm_mc_app_build() {
 	return implode( '.', $parts );
 }
 
+/**
+ * WordPress adds a trailing slash to anything it does not recognise as a file, so
+ * /mortgage-app/sw.js was being 301'd to /mortgage-app/sw.js/ before we ever saw it. The content
+ * was served correctly at the slashed address, which is what made it look like it worked.
+ *
+ * It does not work. A service worker may only control the folder it is served FROM, so one served
+ * at /mortgage-app/sw.js/ has that as its scope and controls nothing at all - the app would install
+ * and then never work offline. The manifest and icons would each cost a needless redirect too.
+ *
+ * Two guards, because one of them alone is a race: refuse the canonical redirect for our own
+ * addresses, and answer at priority 1, before redirect_canonical runs at 10.
+ */
+add_filter( 'redirect_canonical', function ( $redirect ) {
+	return get_query_var( 'aqm_mc_app' ) ? false : $redirect;
+}, 10, 1 );
+
 add_action( 'template_redirect', function () {
 	$what = get_query_var( 'aqm_mc_app' );
 	if ( ! $what ) { return; }
@@ -123,7 +139,7 @@ add_action( 'template_redirect', function () {
 	header( 'Cache-Control: no-cache' );
 	echo aqm_mc_app_shell();
 	exit;
-} );
+}, 1 );
 
 /* ------------------------------------------------------------------ the app */
 

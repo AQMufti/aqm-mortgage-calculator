@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.8.0
+ * Version:     1.8.1
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,12 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.8.1 (17 Sep 2026): the app's own addresses stop being redirected. WordPress adds a trailing
+ * slash to anything it does not take for a file, so /mortgage-app/sw.js was 301'd to
+ * /mortgage-app/sw.js/ - which still served the right bytes, and so looked fine. It was not: a
+ * service worker may only control the folder it is served FROM, so one answering at .../sw.js/
+ * controls nothing, and the app would have installed and then never worked offline. Fixed by
+ * refusing the canonical redirect for these routes and answering before it runs.
  * 1.8.0 (17 Sep 2026): the calculator installs as an app. /mortgage-app/ serves the same calculator
  * full screen, installable from the browser on a phone or a desktop, and it keeps working with no
  * signal. No app store, no developer account, no second codebase - the same core, the same screen
@@ -121,7 +127,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.8.0' );
+define( 'AQM_MC_VERSION', '1.8.1' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
