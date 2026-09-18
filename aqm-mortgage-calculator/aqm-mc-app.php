@@ -162,6 +162,7 @@ function aqm_mc_app_shell() {
 <title>AQM Mortgage Calculator</title>
 <meta name="description" content="Canadian mortgage and closing-cost calculator for every province and territory.">
 <meta name="theme-color" content="#A62021">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AQM Mortgage">
 <meta name="robots" content="noindex">
@@ -175,12 +176,19 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 .aqm-app__wrap{padding:16px}
 .aqm-app__off{display:none;background:#fdf3d6;border-left:3px solid #8a6d1f;padding:8px 12px;margin:0 16px 12px;font-size:.85rem}
 .aqm-app__off.is-on{display:block}
+.aqm-app__install{display:none;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e2e2e2;border-left:3px solid #A62021;border-radius:6px;padding:10px 14px;margin:12px 16px;font-size:.88rem;color:#393939}
+.aqm-app__install.is-on{display:flex}
+.aqm-app__install b{font-weight:700}
+.aqm-app__install button{margin-left:auto;background:#A62021;color:#fff;border:0;border-radius:6px;padding:9px 18px;font-size:.9rem;font-weight:600;cursor:pointer}
+.aqm-app__install button:focus-visible{outline:2px solid #393939;outline-offset:2px}
+.aqm-app__share{display:inline-block;width:1em;height:1em;vertical-align:-.12em}
 @media (max-width:760px){.aqm-app__wrap{padding:10px}.aqm-mc__card{padding:14px}}
 </style>
 </head>
 <body>
 <div class="aqm-app__bar">AQM Mortgage Calculator<a href="<?php echo $site; ?>">aqmuftirealty.com</a></div>
 <div class="aqm-app__off" id="aqm-app-off">You are offline. The rates below are the last ones this app downloaded &mdash; each shows the date it was read.</div>
+<div class="aqm-app__install" id="aqm-app-install" role="note"><span id="aqm-app-installtxt"></span></div>
 <div class="aqm-app__wrap"><?php echo $body; ?></div>
 <script src="<?php echo esc_url( $core ); ?>"></script>
 <script src="<?php echo esc_url( $ui ); ?>"></script>
@@ -192,6 +200,66 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 	if ('serviceWorker' in navigator) {
 		navigator.serviceWorker.register('<?php echo $sw; ?>', { scope: '<?php echo $scope; ?>' })
 			.catch(function (e) { /* an app that cannot cache still works online */ });
+	}
+
+	/* ---------------------------------------------------------------- installing
+	   Everything a browser needs to install this was already in place - HTTPS, a valid manifest, both
+	   icons, a service worker with a fetch handler. What was missing was any way to KNOW that.
+
+	   No browser announces it any more. Chrome dropped the install banner years ago and now hides the
+	   option behind a small address-bar icon or a submenu; iOS has never shown a prompt at all and
+	   never will - Add to Home Screen is the only route there, and it is buried in the Share sheet.
+	   So the page has to offer it itself, differently on each platform. */
+	var bar = document.getElementById('aqm-app-install');
+	var txt = document.getElementById('aqm-app-installtxt');
+	var installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+	var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+		(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); /* iPadOS reports as a Mac */
+	var deferred = null, shown = false;
+
+	function show(html, button) {
+		if (installed || shown) { return; }
+		shown = true;
+		txt.innerHTML = html;
+		if (button) {
+			var b = document.createElement('button');
+			b.type = 'button';
+			b.textContent = 'Install';
+			b.addEventListener('click', function () {
+				if (!deferred) { return; }
+				deferred.prompt();
+				deferred.userChoice.then(function () { deferred = null; bar.className = 'aqm-app__install'; });
+			});
+			bar.appendChild(b);
+		}
+		bar.className = 'aqm-app__install is-on';
+	}
+
+	/* Chrome, Edge, Samsung Internet and the rest: the browser tells us it is installable, and we
+	   hold on to the event so a real button can trigger the real prompt later. */
+	window.addEventListener('beforeinstallprompt', function (e) {
+		e.preventDefault();
+		deferred = e;
+		show('<b>Install this calculator</b> to keep it on your device and use it with no signal.', true);
+	});
+	window.addEventListener('appinstalled', function () { bar.className = 'aqm-app__install'; });
+
+	if (!installed) {
+		if (iOS) {
+			/* No event exists on iOS. Safari will never offer this by itself, so spell it out. */
+			show('<b>Add this to your Home Screen.</b> Tap the Share button '
+				+ '<svg class="aqm-app__share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">'
+				+ '<path d="M12 16V3M12 3L8 7M12 3l4 4M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6"/></svg>'
+				+ ' at the bottom of Safari, scroll down, then tap <b>Add to Home Screen</b>.', false);
+		} else {
+			/* Anything that never fires the event - Firefox, desktop Safari, or a Chrome that has
+			   already been told no once. Said quietly, and only after giving the event its chance. */
+			setTimeout(function () {
+				show('<b>Install this calculator</b> to use it with no signal. In Chrome or Edge, open the '
+					+ 'browser menu and choose <b>Install</b>, or use the install icon in the address bar. '
+					+ 'In Safari on a Mac, use <b>File &rsaquo; Add to Dock</b>.', false);
+			}, 2500);
+		}
 	}
 }());
 </script>

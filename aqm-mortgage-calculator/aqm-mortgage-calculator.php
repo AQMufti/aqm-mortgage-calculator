@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.9.0
+ * Version:     1.9.1
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,16 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.9.1 (18 Sep 2026): the app offers to install itself. Everything a browser needs was already
+ * there - HTTPS, a valid manifest, both icons, a service worker with a fetch handler, all verified
+ * active on the live site - but nothing on the page ever said so, and no browser announces it any
+ * more. Chrome dropped the install banner years ago and hides the option behind a small address-bar
+ * icon or a submenu; iOS has never shown a prompt and never will, because Add to Home Screen inside
+ * the Share sheet is the only route Apple provides. So the app now says it itself: it catches
+ * beforeinstallprompt and shows a real Install button where that exists, spells out the Share ->
+ * Add to Home Screen steps on iPhone and iPad, falls back to naming the menu item everywhere else,
+ * and shows nothing at all once the app is installed. Also adds the standard mobile-web-app-capable
+ * meta alongside Apple's own.
  * 1.9.0 (18 Sep 2026): the calculator explains itself. Until now it shipped a disclaimer and no help
  * at all - nothing saying what "accelerated bi-weekly" changes, why Toronto is listed apart from
  * Ontario, or that every closing-cost row can be typed over.
@@ -139,7 +149,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.9.0' );
+define( 'AQM_MC_VERSION', '1.9.1' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
