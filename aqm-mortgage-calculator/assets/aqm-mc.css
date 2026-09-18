@@ -83,3 +83,47 @@
 .aqm-mc__boc li i{display:block;font-size:.75rem;color:var(--muted);font-style:normal}
 .aqm-mc__boc>p{font-size:.8rem;color:var(--muted);margin:14px 0 0}
 .aqm-mc__boc>p a{color:inherit}
+
+/* ------------------------------------------------------- help panel and guide (1.9.0) */
+/* A <details> rather than a scripted drawer: no JavaScript to fail offline in the app, correct
+   keyboard and screen-reader behaviour from the browser, and one line of screen when closed. */
+.aqm-mc__help{border:1px solid var(--line);border-left:4px solid var(--red);border-radius:8px;background:#fff;margin-bottom:22px}
+.aqm-mc__help>summary{cursor:pointer;padding:13px 18px;font-weight:700;font-size:.95rem;list-style:none;display:flex;align-items:center;gap:8px}
+.aqm-mc__help>summary::-webkit-details-marker{display:none}
+.aqm-mc__help>summary::before{content:"?";flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--red);color:#fff;font-size:.72rem;line-height:19px;text-align:center;font-weight:700}
+.aqm-mc__help>summary::after{content:"Show";margin-left:auto;font-weight:400;font-size:.8rem;color:var(--muted)}
+.aqm-mc__help[open]>summary::after{content:"Hide"}
+.aqm-mc__help>summary:focus-visible{outline:2px solid var(--red);outline-offset:-2px}
+.aqm-mc__helpbody{padding:0 18px 16px;font-size:.9rem;border-top:1px solid var(--line);margin-top:0}
+.aqm-mc__helpbody section{margin-top:16px}
+.aqm-mc__helpbody h4{margin:0 0 6px;font-size:.95rem;color:var(--red)}
+.aqm-mc__helpbody p{margin:0 0 8px}
+.aqm-mc__helpbody ul{margin:0 0 8px;padding-left:20px}
+.aqm-mc__helpbody li{margin-bottom:4px}
+.aqm-mc__helpbody table{font-size:.88rem}
+.aqm-mc__helpbody td{white-space:normal;text-align:left;vertical-align:top;padding:6px 10px 6px 0}
+.aqm-mc__helpbody td:first-child{width:34%;min-width:120px}
+.aqm-mc__helpmore{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
+.aqm-mc__helpbody a{color:var(--red)}
+@media (max-width:560px){.aqm-mc__helpbody td{display:block;width:auto;padding:0 0 2px}.aqm-mc__helpbody td:first-child{width:auto;padding-top:8px}}
+
+/* The public guide at /mortgage-calculator-guide/ - plain reading width, not a calculator. */
+.aqm-mc-guide{--red:#A62021;--ink:#393939;--muted:#6b6b6b;--line:#e2e2e2;max-width:760px;margin:0 auto;color:var(--ink);line-height:1.6}
+.aqm-mc-guide__lede{font-size:1.1rem;line-height:1.55}
+.aqm-mc-guide a{color:var(--red)}
+.aqm-mc-guide h2{font-size:1.3rem;margin:34px 0 10px;padding-top:12px;border-top:1px solid var(--line)}
+.aqm-mc-guide section:first-of-type h2{border-top:none;padding-top:0}
+.aqm-mc-guide ul{padding-left:22px}
+.aqm-mc-guide li{margin-bottom:6px}
+.aqm-mc-guide table{width:100%;border-collapse:collapse;margin:0 0 12px}
+.aqm-mc-guide td{text-align:left;vertical-align:top;padding:8px 12px 8px 0;border-bottom:1px solid #eee}
+.aqm-mc-guide td:first-child{width:32%;min-width:130px}
+.aqm-mc-guide__toc{background:#faf7f7;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:22px 0}
+.aqm-mc-guide__toc p{margin:0 0 6px}
+.aqm-mc-guide__toc ul{list-style:none;margin:0;padding:0;columns:2;column-gap:28px}
+.aqm-mc-guide__toc li{margin-bottom:4px;break-inside:avoid;font-size:.92rem}
+.aqm-mc-guide__cta{margin:18px 0 0}
+.aqm-mc-guide .aqm-mc-guide__btn{display:inline-block;background:var(--red);color:#fff;text-decoration:none;border-radius:6px;padding:10px 18px;font-weight:600;margin:0 8px 8px 0}
+.aqm-mc-guide .aqm-mc-guide__btn.is-alt{background:#fff;color:var(--red);border:1px solid var(--red)}
+.aqm-mc-guide .aqm-mc-guide__btn:hover,.aqm-mc-guide .aqm-mc-guide__btn:focus{text-decoration:underline}
+@media (max-width:560px){.aqm-mc-guide__toc ul{columns:1}.aqm-mc-guide td{display:block;width:auto;border-bottom:none;padding:0 0 2px}.aqm-mc-guide td:first-child{width:auto;padding-top:8px;font-weight:600}}

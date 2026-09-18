@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: AQM Mortgage Calculator
- * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.8.1
+ * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
+ * Version:     1.9.0
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,18 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.9.0 (18 Sep 2026): the calculator explains itself. Until now it shipped a disclaimer and no help
+ * at all - nothing saying what "accelerated bi-weekly" changes, why Toronto is listed apart from
+ * Ontario, or that every closing-cost row can be typed over.
+ *   - A "How to use this calculator" panel now sits at the top of the calculator, on the website page
+ *     AND in the app. It is a plain <details> element: no JavaScript, so it cannot fail offline, it
+ *     gets correct keyboard and screen-reader behaviour from the browser, and closed it costs one
+ *     line of screen.
+ *   - [aqm_mortgage_guide] renders the fuller public guide, at /mortgage-calculator-guide/.
+ *   - Both read ONE array of sections in aqm-mc-help.php, so the panel and the page cannot drift
+ *     apart. The reference sections - minimum down payment, land transfer tax across Canada,
+ *     first-time buyer relief province by province, new-home HST - are page-only: that keeps the
+ *     panel short enough to read on a phone and keeps two near-identical URLs out of Google's way.
  * 1.8.1 (17 Sep 2026): the app's own addresses stop being redirected. WordPress adds a trailing
  * slash to anything it does not take for a file, so /mortgage-app/sw.js was 301'd to
  * /mortgage-app/sw.js/ - which still served the right bytes, and so looked fine. It was not: a
@@ -127,7 +139,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.8.1' );
+define( 'AQM_MC_VERSION', '1.9.0' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
@@ -143,9 +155,16 @@ add_action( 'wp_enqueue_scripts', function () {
 	wp_register_script( 'aqm-mc-core', plugins_url( 'assets/aqm-mc-core.js', __FILE__ ), array(), $v( 'aqm-mc-core.js' ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
 	wp_register_script( 'aqm-mc', plugins_url( 'assets/aqm-mc.js', __FILE__ ), array( 'aqm-mc-core' ), $v( 'aqm-mc.js' ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
 	global $post;
-	if ( $post instanceof WP_Post && has_shortcode( (string) $post->post_content, 'aqm_mortgage_calculator' ) ) {
+	if ( ! $post instanceof WP_Post ) { return; }
+	$content = (string) $post->post_content;
+	if ( has_shortcode( $content, 'aqm_mortgage_calculator' ) ) {
 		wp_enqueue_style( 'aqm-mc' );
 		wp_enqueue_script( 'aqm-mc' );
+	} elseif ( has_shortcode( $content, 'aqm_mortgage_guide' ) ) {
+		/* The guide is text and needs no script - but it must have the stylesheet in the HEAD.
+		   Leaving the shortcode's own late enqueue to do it would print the CSS in the footer and
+		   flash the page unstyled first. */
+		wp_enqueue_style( 'aqm-mc' );
 	}
 } );
 
@@ -185,6 +204,7 @@ function aqm_mc_build( $atts = array(), $enqueue = true ) {
 	?>
 <div class="aqm-mc" id="<?php echo esc_attr( $id ); ?>" data-config="<?php echo esc_attr( wp_json_encode( $cfg ) ); ?>">
 <noscript><p>This calculator needs JavaScript switched on.</p></noscript>
+<?php echo aqm_mc_help_panel(); ?>
 
 <div class="aqm-mc__card">
 	<h3>The property</h3>
@@ -279,3 +299,5 @@ function aqm_mc_build( $atts = array(), $enqueue = true ) {
 add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) { return aqm_mc_build( $atts, true ); } );
 
 require_once __DIR__ . '/aqm-mc-app.php';
+/* After the app file, which defines AQM_MC_APP_PATH - the help links to the app by that path. */
+require_once __DIR__ . '/aqm-mc-help.php';
