@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcode: [aqm_mortgage_calculator]. No external scripts.
- * Version:     1.7.0
+ * Version:     1.8.0
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,18 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.8.0 (17 Sep 2026): the calculator installs as an app. /mortgage-app/ serves the same calculator
+ * full screen, installable from the browser on a phone or a desktop, and it keeps working with no
+ * signal. No app store, no developer account, no second codebase - the same core, the same screen
+ * and the same markup as the page, because aqm_mc_build() now renders both.
+ *   - Why a PWA before a store app: this project measured about one material Canadian tax change a
+ *     month, and store review takes days. An app carrying its tax tables in the binary is stale
+ *     before it is approved. So the rules stay a FILE the app fetches (assets/aqm-mc-core.js) and the
+ *     rates stay an ENDPOINT it fetches (/wp-json/aqm-mc/v1/rates). Both update the moment they ship.
+ *   - The service worker serves the shell, rules and styles from cache, because their URLs carry the
+ *     version. Rates are network-first and only fall back to cache offline, since a stale rate shown
+ *     as current is the single failure the whole rate system exists to prevent. Offline says so, and
+ *     every rate still carries the date it was read.
  * 1.7.0 (17 Sep 2026): two changes, both for the same reason - this is meant to become a desktop
  * and mobile app, and Canadian tax law must never be written out twice.
  *   - The rules move into assets/aqm-mc-core.js, which knows nothing about WordPress or the
@@ -109,7 +121,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.7.0' );
+define( 'AQM_MC_VERSION', '1.8.0' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
@@ -131,10 +143,21 @@ add_action( 'wp_enqueue_scripts', function () {
 	}
 } );
 
-add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
+/**
+ * Build the calculator, markup and all.
+ *
+ * Named rather than inline because TWO things need it now: the WordPress shortcode, and the
+ * standalone app at /mortgage-app/ (aqm-mc-app.php). One copy of the markup, for the same reason
+ * there is one copy of the rules - a second copy is a second thing to forget to change.
+ *
+ * $enqueue is false for the app, which loads its own assets rather than going through wp_head.
+ */
+function aqm_mc_build( $atts = array(), $enqueue = true ) {
 	$a = shortcode_atts( array( 'price' => '850000', 'rate' => '4.19', 'amortization' => '25', 'down1' => '10', 'down2' => '15', 'down3' => '20', 'location' => 'on' ), $atts );
-	wp_enqueue_style( 'aqm-mc' );
-	wp_enqueue_script( 'aqm-mc' );
+	if ( $enqueue ) {
+		wp_enqueue_style( 'aqm-mc' );
+		wp_enqueue_script( 'aqm-mc' );
+	}
 	static $n = 0; $n++;
 	$id  = 'aqm-mc-' . $n;
 	$rates = class_exists( 'AQM_MC_Rates' ) ? AQM_MC_Rates::listing() : array();
@@ -245,4 +268,8 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) {
 </div>
 	<?php
 	return ob_get_clean();
-} );
+}
+
+add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) { return aqm_mc_build( $atts, true ); } );
+
+require_once __DIR__ . '/aqm-mc-app.php';
