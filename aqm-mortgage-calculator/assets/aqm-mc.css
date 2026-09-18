@@ -3,13 +3,20 @@
 .aqm-mc *{box-sizing:border-box}
 .aqm-mc__card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:22px;margin-bottom:22px}
 .aqm-mc h3{margin:0 0 14px;font-size:1.15rem}
-.aqm-mc__shared{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 18px;align-items:end}
+/* The 170px floor let the grid go two-up at about 430px wide, giving each control ~181px of box.
+   "Newfoundland and Labrador" needs ~240px and "Accelerated bi-weekly" ~195px, so a second column
+   appeared exactly where the options stopped fitting - which is what a phone screenshot showed.
+   240px is the widest option any of these selects carries, so a second column now waits until it
+   can actually hold one. Measured, not guessed. */
+.aqm-mc__shared{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 18px;align-items:end}
 .aqm-mc label{display:block;font-weight:600;font-size:.85rem;margin:0 0 5px}
 .aqm-mc input[type=number],.aqm-mc select{width:100%;padding:9px 10px;border:1px solid #bdbdbd;border-radius:6px;font-size:1rem;background:#fff;color:inherit}
 .aqm-mc input:focus,.aqm-mc select:focus,.aqm-mc button:focus-visible{outline:2px solid var(--red);outline-offset:1px}
 .aqm-mc .aqm-mc__chk{display:flex;gap:8px;align-items:center;font-weight:400;font-size:.95rem;margin:0}
 .aqm-mc__scen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-@media (max-width:760px){.aqm-mc__scen{grid-template-columns:1fr}}
+/* Three scenario cards side by side only once a card is wide enough for the two-up rows inside it.
+   At 768px the three-up layout squeezed Amortization until "10 years" was clipped by 10px. */
+@media (max-width:900px){.aqm-mc__scen{grid-template-columns:1fr}}
 .aqm-mc__sc{border:1px solid var(--line);border-top:4px solid var(--c);border-radius:8px;padding:14px}
 .aqm-mc__sc h4{margin:0 0 10px;font-size:1rem;display:flex;align-items:center;gap:8px}
 .aqm-mc__sc h4 i{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--c)}
@@ -42,7 +49,9 @@
 .aqm-mc__sfx{position:relative}
 .aqm-mc__sfx span{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
 .aqm-mc__sfx input[type=text]{padding-right:26px}
-.aqm-mc__hst{display:none}
+/* "Builder's all-in price (HST included)" needs ~330px and will not fit a grid column at any phone
+   width, so it takes the whole row wherever it appears. */
+.aqm-mc__hst{display:none;grid-column:1/-1}
 .aqm-mc__hst.is-on{display:block}
 .aqm-mc__prog{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
 .aqm-mc__prog li{border:1px solid var(--line);border-left:4px solid #bdbdbd;border-radius:6px;padding:10px 12px;font-size:.9rem}
@@ -53,7 +62,7 @@
 .aqm-mc__prog b{display:block;margin-bottom:2px;color:var(--ink)}
 .aqm-mc__prog em{font-style:normal;font-weight:700}
 .aqm-mc__kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
-@media (max-width:760px){.aqm-mc__kpis{grid-template-columns:1fr}}
+@media (max-width:900px){.aqm-mc__kpis{grid-template-columns:1fr}}
 .aqm-mc__kpi{border:1px solid var(--line);border-top:4px solid var(--c);border-radius:8px;padding:12px 14px}
 .aqm-mc__kpi small{display:block;color:var(--muted);font-size:.8rem}
 .aqm-mc__kpi strong{display:block;font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1.2}
@@ -75,7 +84,9 @@
 .aqm-mc__pick label{display:block;font-weight:600;font-size:.85rem;margin:0 0 5px}
 .aqm-mc__ratenote{font-size:.8rem;color:var(--muted);margin:12px 0 0}
 .aqm-mc__ratenote a{color:inherit}
-.aqm-mc__hint{display:block;font-size:.75rem;color:var(--muted);margin:4px 0 0;line-height:1.35}
+.aqm-mc__hint{display:block;font-size:.78rem;color:var(--muted);margin:5px 0 0;line-height:1.35}
+/* The echo of the chosen rate: free to wrap, which the select's own text can never do. */
+.aqm-mc__hint b{color:var(--ink)}
 .aqm-mc__boc ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 18px;list-style:none;margin:0;padding:0}
 .aqm-mc__boc li{border-left:3px solid var(--red);padding:2px 0 2px 12px}
 .aqm-mc__boc li b{display:block;font-size:1.35rem;line-height:1.2;font-variant-numeric:tabular-nums}

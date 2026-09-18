@@ -54,6 +54,9 @@
 		el.value = kind === 'money' ? N0.format(Math.round(v)) : String(Math.round(v * 100) / 100);
 	}
 	function fl(x) { return (Math.round(x * 100) / 100).toFixed(2).replace(/\.?0+$/, ''); }
+	/* Lender names and labels come from scraped pages and from the settings screen, so they are
+	   treated as text, never as markup, wherever they are written into innerHTML. */
+	function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
 	/* --------------------------------------------------------------- instance */
 	function init(root) {
@@ -67,25 +70,44 @@
 		/* Lender rates, when the site has any: a drop-down above each scenario's rate box. */
 		var RATES = (cfg.rates || []).filter(function (r) { return r && +r.rate > 0; })
 			.sort(function (a, b) { return (+a.rate) - (+b.rate); }); // lowest rate first
+		/* A native <select> shows the chosen option inside a fixed-width box and simply cuts off what
+		   does not fit. "4.09% - True North Mortgage - 5-year fixed, insured" needs about 410px and a
+		   phone gives it roughly 300, so the lender and the product - the two things that make a rate
+		   mean anything - were the parts being cut. The option text cannot wrap and cannot be made
+		   responsive, so the fix is not in the select: the full choice is echoed underneath it, where
+		   it is free to wrap. That line was a fixed hint before and is now worth reading. */
+		function echoPick(i) {
+			var sel = q('[data-pick="' + i + '"]'), hint = sel && sel.parentNode.querySelector('.aqm-mc__hint');
+			if (!hint) { return; }
+			var r = sel.value === '' ? null : RATES[+sel.value];
+			if (!r) {
+				hint.innerHTML = '…or just type a rate in the Interest rate box below.';
+				return;
+			}
+			hint.innerHTML = '<b>' + (+r.rate).toFixed(2) + '%</b> &middot; ' + esc(r.lender) + ' &middot; ' + esc(r.label)
+				+ (r.date ? ' &middot; read ' + esc(r.date) : '') + (r.stale ? ' <b>(out of date)</b>' : '');
+		}
+
 		if (RATES.length) {
 			var opts = '<option value="">Type my own rate in the box below</option>' + RATES.map(function (r, i) {
-				return '<option value="' + i + '">' + (+r.rate).toFixed(2) + '% \u2013 ' + r.lender + ' \u2013 ' + r.label + (r.stale ? ' (out of date)' : '') + '</option>';
+				return '<option value="' + i + '">' + (+r.rate).toFixed(2) + '% \u2013 ' + esc(r.lender) + ' \u2013 ' + esc(r.label) + (r.stale ? ' (out of date)' : '') + '</option>';
 			}).join('');
 			scs.forEach(function (el, i) {
 				var box = document.createElement('div');
 				box.className = 'aqm-mc__pick';
 				box.innerHTML = '<label for="' + root.id + '-pick' + i + '">Interest rate: pick a lender&rsquo;s rate\u2026</label>'
 					+ '<select id="' + root.id + '-pick' + i + '" data-pick="' + i + '">' + opts + '</select>'
-					+ '<span class="aqm-mc__hint">&hellip;or just type a rate in the Interest rate box below.</span>';
+					+ '<span class="aqm-mc__hint"></span>';
 				// Sit the picker directly above the Interest rate box, not above Down payment, so the
 				// two rate controls read as one thing and "the box below" means the box below.
 				var rateRow = el.querySelector('[data-k=rate]').closest('.aqm-mc__two');
 				el.insertBefore(box, rateRow || el.querySelector('.aqm-mc__two'));
+				echoPick(i);
 			});
 			var note = document.createElement('p');
 			note.className = 'aqm-mc__ratenote';
 			var srcs = [], seen = {};
-			RATES.forEach(function (r) { if (r.url && !seen[r.url]) { seen[r.url] = 1; srcs.push('<a href="' + r.url + '" target="_blank" rel="noopener nofollow">' + r.lender + '</a>'); } });
+			RATES.forEach(function (r) { if (r.url && !seen[r.url]) { seen[r.url] = 1; srcs.push('<a href="' + esc(r.url) + '" target="_blank" rel="noopener nofollow">' + esc(r.lender) + '</a>'); } });
 			note.innerHTML = 'The rates in the drop-downs are the lenders\u2019 own published rates, read on the dates listed, and rates typed in by A. Q. Mufti. They are not offers and nobody is approved at them: your rate depends on the lender, the property and you. Confirm any rate with the lender or a licensed mortgage agent.' + (srcs.length ? ' Sources: ' + srcs.join(', ') + '.' : '');
 			root.querySelector('.aqm-mc__scen').parentNode.appendChild(note);
 		}
@@ -375,7 +397,7 @@
 			if (t.hasAttribute('data-fmt')) { liveFormat(t); }
 			var sc = t.closest('.aqm-mc__sc');
 			if (sc) { var i = +sc.getAttribute('data-s'); if (k === 'ddol') { dollarLock[i] = true; } else if (k === 'dpct') { dollarLock[i] = false; } }
-			if (sc && k === 'rate') { var pk = q('[data-pick]', sc); if (pk) { pk.value = ''; } }
+			if (sc && k === 'rate') { var pk = q('[data-pick]', sc); if (pk) { pk.value = ''; echoPick(+pk.getAttribute('data-pick')); } }
 			compute();
 		});
 		root.addEventListener('change', function (e) {
@@ -383,6 +405,7 @@
 			if (p !== null && p !== undefined) {
 				var r = RATES[+e.target.value];
 				if (r) { q('[data-k=rate]', scs[+p]).value = (+r.rate).toFixed(2); }
+				echoPick(+p);
 			}
 			compute();
 		});

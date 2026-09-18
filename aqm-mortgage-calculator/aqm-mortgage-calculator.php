@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.9.2
+ * Version:     1.9.3
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,21 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.9.3 (18 Sep 2026): drop-downs stop cutting their own text off. Measured across phone widths in
+ * the real app shell rather than reasoned about, which found more than the rate picker:
+ *   - The shared grid's 170px floor let it go two-up at about 430px, handing each control ~181px.
+ *     "Newfoundland and Labrador" needs ~240px and "Accelerated bi-weekly" ~195px, so a second column
+ *     arrived exactly where the options stopped fitting - visible on a real iPhone screenshot. The
+ *     floor is now 240px, the widest option any of these selects carries, so two columns wait until
+ *     one can hold its content.
+ *   - "Builder's all-in price (HST included)" needs ~330px and fits no phone column at all, so that
+ *     box now spans the full row wherever it appears.
+ *   - The rate picker cannot be fixed this way: its longest option needs ~410px against a phone's
+ *     ~300px, and option text can neither wrap nor be made responsive. So the full choice - rate,
+ *     lender, product and the date it was read - is echoed on the line underneath, which wraps. That
+ *     line was a fixed hint before; it now says what you actually picked.
+ *   - While in there: lender names, labels and source URLs come from scraped pages, and were being
+ *     written into innerHTML unescaped. They are escaped now.
  * 1.9.2 (18 Sep 2026): the iPhone instructions named a button that is not there. 1.9.1 said "tap the
  * Share button at the bottom of Safari"; a screenshot from a current iPhone showed a toolbar with no
  * Share button on it at all - that Safari puts a page menu beside the address instead, and Add to
@@ -156,7 +171,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.9.2' );
+define( 'AQM_MC_VERSION', '1.9.3' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
