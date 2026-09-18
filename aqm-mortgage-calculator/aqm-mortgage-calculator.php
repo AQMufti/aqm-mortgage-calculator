@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.9.1
+ * Version:     1.9.2
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,13 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.9.2 (18 Sep 2026): the iPhone instructions named a button that is not there. 1.9.1 said "tap the
+ * Share button at the bottom of Safari"; a screenshot from a current iPhone showed a toolbar with no
+ * Share button on it at all - that Safari puts a page menu beside the address instead, and Add to
+ * Home Screen lives inside that. Safari also lets the address bar sit at the top or the bottom by a
+ * setting, so naming a position was wrong twice over. The text now names both routes, shows both
+ * glyphs, asserts no position, and says plainly that there is no App Store download and that Apple
+ * gives a website no way to install itself - which is the honest answer to "where is the link".
  * 1.9.1 (18 Sep 2026): the app offers to install itself. Everything a browser needs was already
  * there - HTTPS, a valid manifest, both icons, a service worker with a fetch handler, all verified
  * active on the live site - but nothing on the page ever said so, and no browser announces it any
@@ -149,7 +156,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.9.1' );
+define( 'AQM_MC_VERSION', '1.9.2' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();

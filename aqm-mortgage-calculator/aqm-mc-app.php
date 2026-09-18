@@ -181,7 +181,8 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 .aqm-app__install b{font-weight:700}
 .aqm-app__install button{margin-left:auto;background:#A62021;color:#fff;border:0;border-radius:6px;padding:9px 18px;font-size:.9rem;font-weight:600;cursor:pointer}
 .aqm-app__install button:focus-visible{outline:2px solid #393939;outline-offset:2px}
-.aqm-app__share{display:inline-block;width:1em;height:1em;vertical-align:-.12em}
+.aqm-app__share{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.18em;padding:1px;border:1px solid #bdbdbd;border-radius:4px;box-sizing:content-box}
+.aqm-app__aside{display:block;margin-top:6px;font-size:.82rem;color:#6b6b6b}
 @media (max-width:760px){.aqm-app__wrap{padding:10px}.aqm-mc__card{padding:14px}}
 </style>
 </head>
@@ -246,11 +247,28 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 
 	if (!installed) {
 		if (iOS) {
-			/* No event exists on iOS. Safari will never offer this by itself, so spell it out. */
-			show('<b>Add this to your Home Screen.</b> Tap the Share button '
-				+ '<svg class="aqm-app__share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">'
-				+ '<path d="M12 16V3M12 3L8 7M12 3l4 4M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6"/></svg>'
-				+ ' at the bottom of Safari, scroll down, then tap <b>Add to Home Screen</b>.', false);
+			/* No event exists on iOS and none ever will: Apple provides no way for a page to install
+			   itself, so a button here would be a lie. Instructions are the only honest option.
+
+			   THE WORDING MATTERS MORE THAN IT LOOKS. 1.9.1 named the Share button and said where on
+			   the screen to find it. A screenshot from a current iPhone showed a Safari toolbar with
+			   no Share button on it at all - that Safari puts a page menu beside the address instead,
+			   and Add to Home Screen lives inside it. Safari also lets the address bar sit at either
+			   end of the screen, by a setting, so the position was wrong twice over. This names both
+			   routes and claims no position: an instruction that sends someone hunting for a button
+			   that is not on their screen is worse than no instruction, because they conclude the
+			   feature is missing. Which is exactly what happened.
+
+			   These lines are JavaScript, not PHP - they are served to the browser. The release
+			   script asserts the old wording is absent from the rendered page, so a comment quoting
+			   it verbatim would fail that check. Describe it; do not repeat it. */
+			var menuGlyph = '<svg class="aqm-app__share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+			var shareGlyph = '<svg class="aqm-app__share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 16V3M12 3L8 7M12 3l4 4M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6"/></svg>';
+			show('<b>Add this to your Home Screen.</b> In Safari, tap ' + menuGlyph
+				+ ' beside the web address &mdash; or the Share button ' + shareGlyph
+				+ ' if your Safari shows one &mdash; then tap <b>Add to Home Screen</b>. '
+				+ '<span class="aqm-app__aside">You may need to scroll the menu. There is no App Store download: '
+				+ 'iPhones install this straight from Safari, and Apple gives a website no way to do it for you.</span>', false);
 		} else {
 			/* Anything that never fires the event - Firefox, desktop Safari, or a Chrome that has
 			   already been told no once. Said quietly, and only after giving the event its chance. */
