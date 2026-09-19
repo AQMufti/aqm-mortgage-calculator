@@ -35,7 +35,8 @@
  * been ticked in Settings -> AQM Mortgage Calculator, and a changed figure has to be ticked again. Only
  * the Bank of Canada figures, which arrive as data rather than as a web page, publish themselves. That is why nothing here is load-bearing - the calculator works
  * without it, the last good figures are kept, every rate shows its date, and anything older than
- * 14 days is marked as out of date.
+ * 14 days is flagged on the settings screen as not refreshing. Visitors are never told a rate is
+ * "out of date" - they are told the day it was read.
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -44,7 +45,7 @@ class AQM_MC_Rates {
 	const OPTION   = 'aqm_mc_rates';
 	const SETTINGS = 'aqm_mc_rates_settings';
 	const CRON     = 'aqm_mc_rates_cron';
-	const STALE    = 14; // days before a rate is marked out of date
+	const STALE    = 14; // days before the SETTINGS SCREEN flags a source as not refreshing
 
 	/** Where the rates come from. Each source returns a list of rate rows. */
 	public static function sources() {
@@ -172,7 +173,20 @@ class AQM_MC_Rates {
 
 	/* ------------------------------------------------------------------ read */
 
-	/** The rates the calculator should offer: fetched ones first, then any typed by hand. */
+	/**
+	 * The rates the calculator should offer: fetched ones first, then any typed by hand.
+	 *
+	 * NOTHING IS DROPPED FOR BEING OLD. 1.9.6 briefly hid anything past 14 days, on the reasoning
+	 * that a rate nobody had re-read should not be shown. AQ overruled it, correctly: lenders hold a
+	 * rate for weeks at a time, so an old reading is usually not a wrong one - it is the same rate,
+	 * still published, simply not re-read. Hiding it threw away a true figure to avoid a risk that
+	 * mostly was not there, and left the drop-down thinner for no gain.
+	 *
+	 * What the visitor gets instead is the DATE. Every rate carries the day it was read, so a figure
+	 * from three weeks ago says so and the reader can weigh it. That is the whole contract here:
+	 * never assert freshness, always show provenance. The word "stale" survives only for the
+	 * settings screen, where AQ needs to know a source has stopped answering.
+	 */
 	public static function listing() {
 		$set = self::settings();
 		if ( empty( $set['enabled'] ) ) { return array(); }
@@ -183,6 +197,71 @@ class AQM_MC_Rates {
 		}
 		foreach ( self::manual_rows( $set['manual'] ) as $row ) { $out[] = $row; }
 		return self::decorate( $out );
+	}
+
+	/**
+	 * Everything AQ needs to act on, so he learns it here rather than from a client. Two different
+	 * problems share this list, and the 'hidden' flag on each row says which:
+	 *
+	 *   hidden = false - the visitor IS seeing this rate, dated, but the source has stopped feeding
+	 *     it, so the figure will sit there unchanged until someone intervenes:
+	 *       'stale'   no new reading for over STALE days.
+	 *       'failing' the last fetch errored, though the figure is still inside STALE days - the
+	 *                 early warning, days before it would even show as stale.
+	 *   hidden = true - the rate is not reaching the calculator at all:
+	 *       'unticked' a page-scraped figure nobody has confirmed on the settings screen yet.
+	 *       'never'    the source has never yielded a row on this server.
+	 *
+	 * Age alone never hides a rate - see listing(). Both kinds are answered the same way: paste the
+	 * line into "Your own rates" with a figure checked against the lender's page.
+	 */
+	public static function missing() {
+		$set   = self::settings();
+		$store = get_option( self::OPTION, array() );
+		$log   = ( isset( $store['log'] ) && is_array( $store['log'] ) ) ? $store['log'] : array();
+		$rows  = self::fetched();
+		$out   = array();
+
+		foreach ( self::decorate( $rows ) as $row ) {
+			$src      = isset( $row['src'] ) ? $row['src'] : '';
+			$note     = isset( $log[ $src ] ) ? (string) $log[ $src ] : '';
+			$failed   = ( '' !== $note && 'read' !== substr( $note, 0, 4 ) );
+			$unticked = ( empty( $row['auto'] ) && ! self::is_approved( $row, $set ) );
+			$why      = '';
+			$hidden   = true;
+
+			/* An old rate and a failing source are both still ON the calculator, carrying their date.
+			   Marking either "not showing" here would contradict what the visitor can see. Only an
+			   unticked figure is genuinely absent. */
+			if ( ! empty( $row['stale'] ) )   { $why = 'stale';    $hidden = false; }
+			elseif ( $unticked )              { $why = 'unticked'; }
+			elseif ( $failed )                { $why = 'failing';  $hidden = false; }
+			if ( '' === $why ) { continue; }
+
+			$row['why']    = $why;
+			$row['hidden'] = $hidden;
+			$row['reason'] = $note;
+			$out[] = $row;
+		}
+
+		/* Sources that have never produced a row at all - the ones that refuse this server outright.
+		   Skipped entirely when NOTHING has been read yet, because on a fresh install that would
+		   list every source and say nothing useful. */
+		if ( $rows ) {
+			$seen = array();
+			foreach ( $rows as $r ) { if ( isset( $r['src'] ) ) { $seen[ $r['src'] ] = 1; } }
+			foreach ( self::sources() as $key => $src ) {
+				if ( isset( $seen[ $key ] ) ) { continue; }
+				$out[] = array(
+					'lender' => isset( $src['name'] ) ? $src['name'] : $key,
+					'label'  => 'nothing has ever been read from this source',
+					'rate'   => 0, 'date' => '', 'src' => $key, 'why' => 'never', 'hidden' => true,
+					'reason' => isset( $log[ $key ] ) ? (string) $log[ $key ] : 'not read yet',
+					'url'    => isset( $src['url'] ) ? $src['url'] : '',
+				);
+			}
+		}
+		return $out;
 	}
 
 	/** Everything read from the sources, ticked or not. */
@@ -589,6 +668,56 @@ class AQM_MC_Rates {
 		echo '</table>';
 		echo '</form><hr>';
 
+
+		/* ------------------------------------------- what needs attention
+		   Nothing is hidden from visitors for being old - they see the date and judge for themselves.
+		   But AQ still needs to know when a source has stopped answering, because the figure will sit
+		   there unchanged until someone does something about it; and separately, which figures are
+		   not reaching the calculator at all. The "On the calculator?" column keeps the two apart, so
+		   this screen never contradicts what a visitor can see. Each row carries the line to paste
+		   into "Your own rates" to take that rate over by hand. */
+		$gone = self::missing();
+		if ( $gone ) {
+			$n_hidden = 0;
+			foreach ( $gone as $g ) { if ( ! empty( $g['hidden'] ) ) { $n_hidden++; } }
+			$n_shown = count( $gone ) - $n_hidden;
+
+			echo '<h2>Sources that need attention</h2>';
+			echo '<div class="notice notice-warning inline"><p>';
+			if ( $n_shown ) {
+				echo '<strong>' . (int) $n_shown . ' rate(s) are still shown to visitors but have stopped refreshing.</strong> '
+					. 'Each one carries the day it was read, so nobody is told it is current &mdash; and a lender that has not '
+					. 'moved its posted rate is still offering that rate. But it will sit there unchanged until you act. ';
+			}
+			if ( $n_hidden ) {
+				echo '<strong>' . (int) $n_hidden . ' rate(s) are not reaching the calculator at all.</strong> ';
+			}
+			echo 'Either way: check the figure on the lender&rsquo;s own page, then copy its line into <em>Your own rates</em> '
+				. 'above with the correct number. A typed rate always wins and never goes stale.</p></div>';
+			echo '<table class="widefat striped"><thead><tr><th>Lender</th><th>What it is</th><th>Figure</th><th>Last read</th><th>On the calculator?</th><th>What is wrong</th><th>Line to copy</th></tr></thead><tbody>';
+			$why_text = array(
+				'never'    => 'this server has never been able to read that page',
+				'stale'    => 'no new reading for over ' . self::STALE . ' days',
+				'unticked' => 'read, but not ticked above yet',
+				'failing'  => 'the last read of the source failed',
+			);
+			foreach ( $gone as $g ) {
+				$line = $g['rate'] > 0 ? $g['lender'] . ' | ' . $g['label'] . ' | ' . number_format( (float) $g['rate'], 2 ) : '';
+				echo '<tr>'
+					. '<td>' . esc_html( $g['lender'] ) . ( ! empty( $g['url'] ) ? ' <a href="' . esc_url( $g['url'] ) . '" target="_blank" rel="noopener">page</a>' : '' ) . '</td>'
+					. '<td>' . esc_html( $g['label'] ) . '</td>'
+					. '<td>' . ( $g['rate'] > 0 ? esc_html( number_format( (float) $g['rate'], 2 ) ) . '%' : '&mdash;' ) . '</td>'
+					. '<td>' . esc_html( $g['date'] ? $g['date'] : 'never' ) . '</td>'
+					. '<td>' . ( empty( $g['hidden'] ) ? 'yes, dated ' . esc_html( $g['date'] ) : '<strong>no</strong>' ) . '</td>'
+					. '<td>' . esc_html( isset( $why_text[ $g['why'] ] ) ? $why_text[ $g['why'] ] : $g['why'] )
+						. ( $g['reason'] ? '<br><span class="description">' . esc_html( $g['reason'] ) . '</span>' : '' ) . '</td>'
+					. '<td>' . ( $line ? '<code>' . esc_html( $line ) . '</code>' : '<span class="description">no figure to copy &mdash; get it from the lender</span>' ) . '</td>'
+					. '</tr>';
+			}
+			echo '</tbody></table>';
+			echo '<p class="description">A figure copied from here is whatever was last read, which is exactly the number in question. Check it against the lender&rsquo;s page before you save it.</p>';
+		}
+
 		echo '<h2>Rates read from lender pages</h2>';
 		echo '<p class="description">A lender&rsquo;s page is written for people, so a rate can be read wrongly. Nothing here reaches the calculator until you tick it, and a rate that changes has to be ticked again. Open the source page, check the figure, then tick it and save.</p>';
 		$fetched = self::decorate( self::fetched() );
@@ -604,7 +733,7 @@ class AQM_MC_Rates {
 			if ( ! $ok ) { $pending++; }
 			echo '<tr' . ( empty( $r['doubt'] ) ? '' : ' data-aqm-doubt="1"' ) . '><td><label><input type="checkbox" form="aqm-mc-form" name="approve[' . esc_attr( $r['key'] ) . ']" value="' . esc_attr( $r['rate'] ) . '" ' . checked( $ok, true, false ) . '> ' . ( $ok ? 'shown' : '<strong>check</strong>' ) . '</label></td>'
 				. '<td>' . esc_html( $r['lender'] ) . '</td><td>' . esc_html( $r['label'] ) . '</td><td><strong>' . esc_html( number_format( (float) $r['rate'], 2 ) ) . '%</strong></td>'
-				. '<td>' . esc_html( $r['date'] ) . ( empty( $r['stale'] ) ? '' : ' <span style="color:#b32d2e">out of date</span>' ) . '</td>'
+				. '<td>' . esc_html( $r['date'] ) . ( empty( $r['stale'] ) ? '' : ' <span style="color:#b32d2e">not refreshing</span>' ) . '</td>'
 				. '<td><a href="' . esc_url( $r['url'] ) . '" target="_blank" rel="noopener">' . esc_html( wp_parse_url( $r['url'], PHP_URL_HOST ) ) . '</a></td></tr>';
 		}
 		if ( ! $fetched ) { echo '<tr><td colspan="6">Nothing read yet. Use &ldquo;Save and read rates now&rdquo;.</td></tr>'; }
@@ -624,7 +753,7 @@ class AQM_MC_Rates {
 		if ( ! $items ) { echo '<tr><td colspan="5">Nothing yet. Bank of Canada figures appear on their own; lender rates appear once ticked above.</td></tr>'; }
 		foreach ( $items as $r ) {
 			echo '<tr><td><strong>' . esc_html( $r['lender'] ) . '</strong>' . ( empty( $r['own'] ) ? '' : ' <em>(yours)</em>' ) . '</td><td>' . esc_html( $r['label'] ) . '</td><td>' . esc_html( number_format( (float) $r['rate'], 2 ) ) . '%</td>'
-				. '<td>' . esc_html( $r['date'] ) . ( empty( $r['stale'] ) ? '' : ' <span style="color:#b32d2e">out of date</span>' ) . '</td>'
+				. '<td>' . esc_html( $r['date'] ) . ( empty( $r['stale'] ) ? '' : ' <span style="color:#b32d2e">not refreshing</span>' ) . '</td>'
 				. '<td>' . ( $r['url'] ? '<a href="' . esc_url( $r['url'] ) . '" target="_blank" rel="noopener">' . esc_html( wp_parse_url( $r['url'], PHP_URL_HOST ) ) . '</a>' : '&mdash;' ) . '</td></tr>';
 		}
 		echo '</tbody></table>';

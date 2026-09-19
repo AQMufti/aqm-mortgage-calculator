@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.9.5
+ * Version:     1.9.6
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,31 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.9.6 (19 Sep 2026): an old rate keeps its figure and gains its date, and Nunavut stops saying nil.
+ *   - A rate that has not been re-read for a fortnight used to be published with an "(out of date)"
+ *     label, and a draft of this release went further and dropped it altogether. AQ overruled that,
+ *     correctly: lenders hold a posted rate for weeks at a time, so an old reading is usually the
+ *     same rate still standing. Dropping it threw away a figure that was almost certainly true and
+ *     left the calculator emptier than the market. The figure stays; what changes is the caption.
+ *     Where "(out of date)" sat, the drop-down and the echo line under it now carry the day the rate
+ *     was read - "5.29% - RBC - 5-year fixed (read 2 Sep 2026)" - which is a fact rather than a
+ *     verdict, and lets anyone judge its age themselves. The Bank of Canada benchmark box reads the
+ *     same way.
+ *   - Publishing an old figure only works if someone knows the source has stopped answering, so the
+ *     settings screen gains "Sources that need attention": what each one last said, when it was last
+ *     read, whether it is still on the calculator, why the fetch is failing, and the exact line to
+ *     paste into "Your own rates" to take it over by hand. That is the route back in for BMO,
+ *     Manulife, Vancity and anyone else this server cannot reach, and it is the warning that would
+ *     have flagged Tangerine before its three rates all drifted behind. An "On the calculator?"
+ *     column keeps a dated-but-showing rate apart from one that is genuinely absent, so the screen
+ *     can never contradict what a visitor sees. The 14-day mark now governs this screen alone - it
+ *     no longer decides what the public gets.
+ *   - Nunavut: the Land Titles Tariff of Fees Regulations set a $100 minimum for the fee under
+ *     s.156(2)(a) and $80 under s.156(3), each plus the 10% assurance fund levy (R-058-2003) - so
+ *     $110 and $88, and that is what is shown, labelled as a minimum. The Act computes the real fee
+ *     from the value of the land (its next section is headed "Valuation of land") and that scale is
+ *     not retrievable: the consolidated Act truncates before Part V and the regulations site refuses
+ *     automated reading. An honest floor with a note beats a guessed scale, and beats nil.
  * 1.9.5 (18 Sep 2026): the app says when a newer version is ready. From 1.9.4 a reload always lands
  * on the current version, but nothing told anyone to reload: a service worker update installs quietly
  * while the page in front of you goes on being served by the old one, so you can sit a version behind
@@ -192,7 +217,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.9.5' );
+define( 'AQM_MC_VERSION', '1.9.6' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
@@ -280,7 +305,7 @@ function aqm_mc_build( $atts = array(), $enqueue = true ) {
 		<li>
 			<b><?php echo esc_html( number_format( (float) $b['rate'], 2 ) ); ?>%</b>
 			<span><?php echo esc_html( preg_replace( '/\s*\((?:all chartered banks|chartered bank average)\)/i', '', $b['label'] ) ); ?></span>
-			<i>read <?php echo esc_html( $b['date'] ); ?><?php echo empty( $b['stale'] ) ? '' : ', out of date'; ?></i>
+			<i>read <?php echo esc_html( $b['date'] ); ?></i>
 		</li>
 	<?php endforeach; ?>
 	</ul>

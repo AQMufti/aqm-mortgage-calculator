@@ -393,8 +393,10 @@ so an old figure tells you it is old rather than pretending.</p>',
 something is missing: below the minimum down payment for the price, a 30-year amortization with
 under 20% down when you are not a first-time buyer or buying new, 20% required because the price is
 $1,500,000 or more, or simply no interest rate entered yet.</td></tr>
-<tr><td><strong>&ldquo;out of date&rdquo; beside a rate</strong></td><td>Nobody has re-read that
-lender&rsquo;s published page in over two weeks. Treat it as indicative and confirm it.</td></tr>
+<tr><td><strong>&ldquo;read&rdquo; and a date beside a rate</strong></td><td>That is the day the
+lender&rsquo;s published page was last read. It appears once a reading is over two weeks old.
+Lenders hold a posted rate for weeks at a time, so an older reading is usually still the rate on
+offer &mdash; but every rate here is indicative, and this one is worth confirming.</td></tr>
 <tr><td><strong>A yellow strip at the top of the app</strong></td><td>You are offline. Everything
 still calculates; the rates are the last ones downloaded.</td></tr>
 <tr><td><strong>It looks nothing like your lender&rsquo;s figure</strong></td><td>Check the payment

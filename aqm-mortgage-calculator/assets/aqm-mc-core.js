@@ -187,8 +187,21 @@
 		},
 		nu: {
 			name: 'Nunavut', short: 'Nunavut',
-			taxName: 'Land titles fee', noTax: true, tax: function () { return 0; },
-			taxNote: 'Nunavut charges no land transfer tax, but its land titles fee could not be read from a Government of Nunavut page and is shown as nil. Ask your lawyer for the figure.',
+			taxName: 'Land titles fee (minimum)', noTax: true,
+			/* Nunavut charges NO land transfer tax. Its land titles fee is set by the Land Titles
+			   Tariff of Fees Regulations, which give only MINIMUMS: $100 for the fee under s.156(2)(a)
+			   of the Land Titles Act, $80 under s.156(3). Each attracts the assurance fund levy of
+			   10% of the fee collected (R-058-2003), so $110 and $88.
+
+			   The Act sets the fee itself from the value of the land - its next section is headed
+			   "Valuation of land" - and that per-value scale could NOT be retrieved from any Nunavut
+			   government source: the consolidated Act truncates before Part V and the regulations
+			   site refuses automated reading. So the floor is shown, labelled as a floor, and the
+			   note says plainly that the real figure is higher. A guessed scale would be worse than
+			   an honest minimum. */
+			tax: function () { return 110; },
+			mtgFee: function () { return 88; },
+			taxNote: 'Nunavut charges no land transfer tax. What is shown is the MINIMUM land titles fee its regulations set &mdash; $100 to register the transfer and $80 for the mortgage, each plus the 10% assurance fund levy. The real fee is calculated from the value of the land and will be higher than this; the scale is not published anywhere we could read it. Ask your lawyer or the Nunavut Land Titles Office for the actual figure.',
 			pst: 0, nhTax: 0, nhName: 'GST', nhRate: '5%'
 		}
 	};

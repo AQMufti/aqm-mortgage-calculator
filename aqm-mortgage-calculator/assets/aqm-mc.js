@@ -85,12 +85,20 @@
 				return;
 			}
 			hint.innerHTML = '<b>' + (+r.rate).toFixed(2) + '%</b> &middot; ' + esc(r.lender) + ' &middot; ' + esc(r.label)
-				+ (r.date ? ' &middot; read ' + esc(r.date) : '') + (r.stale ? ' <b>(out of date)</b>' : '');
+				/* A date, never a verdict. Lenders hold a posted rate for weeks, so an old reading is
+				   usually the same rate still standing; the day it was read lets the reader judge
+				   that, instead of being told what to think. NB: comments in this file are served to
+				   the browser, so the phrase this replaced must not reappear even in one. */
+				+ (r.date ? ' &middot; read ' + esc(r.date) : '');
 		}
 
 		if (RATES.length) {
 			var opts = '<option value="">Type my own rate in the box below</option>' + RATES.map(function (r, i) {
-				return '<option value="' + i + '">' + (+r.rate).toFixed(2) + '% \u2013 ' + esc(r.lender) + ' \u2013 ' + esc(r.label) + (r.stale ? ' (out of date)' : '') + '</option>';
+				/* Where the old caveat sat, the option now carries the date it was read - the same
+				   space, a fact instead of a judgement. Only on the older ones: adding a date to
+				   every option would push an already-overlong option further past what a phone shows;
+				   the echo line below dates all of them, where there is room to wrap. */
+				return '<option value="' + i + '">' + (+r.rate).toFixed(2) + '% \u2013 ' + esc(r.lender) + ' \u2013 ' + esc(r.label) + (r.stale ? ' (read ' + esc(r.date) + ')' : '') + '</option>';
 			}).join('');
 			scs.forEach(function (el, i) {
 				var box = document.createElement('div');
