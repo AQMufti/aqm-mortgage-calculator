@@ -28,7 +28,33 @@
 			return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
 		});
 	}
-	function save(t) { token = t; try { t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY); } catch (e) {} }
+	function save(t) {
+		token = t;
+		try { t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY); } catch (e) {}
+		chrome();
+	}
+
+	/**
+	 * Which way in this device is offered. Unpaired: the quiet "Owner sign-in" link at the foot of
+	 * the app, which is the ONLY door on an installed iPhone app - it has no address bar. Paired:
+	 * the Admin button in the bar, and the link goes away. Called on every save so pairing and
+	 * signing out both take effect at once, without a reload.
+	 */
+	function chrome() {
+		var foot = document.getElementById('aqm-app-foot');
+		if (foot) { foot.style.display = token ? 'none' : ''; }
+		var bar = document.querySelector('.aqm-app__bar');
+		if (!bar) { return; }
+		var btn = bar.querySelector('.aqm-app__admin');
+		if (token && !btn) {
+			btn = document.createElement('button');
+			btn.type = 'button'; btn.className = 'aqm-app__admin'; btn.textContent = 'Admin';
+			btn.addEventListener('click', open);
+			bar.appendChild(btn);
+		} else if (!token && btn) {
+			btn.parentNode.removeChild(btn);
+		}
+	}
 
 	/**
 	 * A name for the device list, so it does not fill up with "A device". Read off the user agent,
@@ -314,14 +340,5 @@
 	});
 	if (location.hash === '#admin') { open(); }
 
-	// Once a device is paired the button is worth showing; before that it is clutter for visitors.
-	if (token) {
-		var bar = document.querySelector('.aqm-app__bar');
-		if (bar && !bar.querySelector('.aqm-app__admin')) {
-			var b = document.createElement('button');
-			b.type = 'button'; b.className = 'aqm-app__admin'; b.textContent = 'Admin';
-			b.addEventListener('click', open);
-			bar.appendChild(b);
-		}
-	}
+	chrome();
 })();

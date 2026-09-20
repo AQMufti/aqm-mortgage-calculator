@@ -208,6 +208,12 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
    below a long calculator is unusable. */
 .aqm-app__admin{margin-left:8px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:5px;padding:5px 12px;font:inherit;font-size:.8rem;font-weight:600;cursor:pointer}
 .aqm-app__admin:focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* The way in on a device that has never paired - see the note by the loader. Quiet, but present:
+   an installed iPhone app has no address bar, so this is the ONLY door there. */
+.aqm-app__foot{text-align:center;margin:4px 0 22px}
+.aqm-app__foot button{background:none;border:0;color:#8a8a8a;font:inherit;font-size:.8rem;text-decoration:underline;cursor:pointer;padding:8px 14px}
+.aqm-app__foot button:focus-visible{outline:2px solid #A62021;outline-offset:2px;border-radius:4px}
+body.aqm-adm-open .aqm-app__foot{display:none}
 body.aqm-adm-open .aqm-app__wrap,body.aqm-adm-open .aqm-app__install,body.aqm-adm-open .aqm-app__update{display:none}
 .aqm-adm{max-width:760px;margin:0 auto;padding:16px}
 .aqm-adm__head{display:flex;align-items:center;gap:12px;margin-bottom:4px}
@@ -252,22 +258,48 @@ body.aqm-adm-open .aqm-app__wrap,body.aqm-adm-open .aqm-app__install,body.aqm-ad
 <div class="aqm-app__install" id="aqm-app-install" role="note"><span id="aqm-app-installtxt"></span></div>
 <div class="aqm-app__update" id="aqm-app-update" role="status"><span>A newer version of this calculator is ready.</span><button type="button" id="aqm-app-reload">Reload</button></div>
 <div class="aqm-app__wrap"><?php echo $body; ?></div>
+<p class="aqm-app__foot" id="aqm-app-foot"><button type="button" id="aqm-app-owner">Owner sign-in</button></p>
 <script src="<?php echo esc_url( $core ); ?>"></script>
 <script src="<?php echo esc_url( $ui ); ?>"></script>
 <script>
-/* The owner's rates screen is fetched only when it is wanted - at #admin, or on a device that has
-   already paired. A visitor never downloads it, and there is nothing in the public shell to find:
-   the screen is useless without a device token, which only the pairing exchange can mint. */
+/* The owner's rates screen is fetched only when it is wanted - when this link is pressed, at
+   #admin, or on a device that has already paired. A visitor never downloads it, and there is
+   nothing in the public shell to find: the screen is useless without a device token, which only
+   the pairing exchange can mint.
+
+   ⚠ THE LINK EXISTS BECAUSE 1.10.0 LOCKED THE OWNER OUT OF HIS OWN APP. The Admin button was
+   shown only once a device had paired, on the reasoning that an unpaired visitor should not see
+   it - which left no way IN on a device that had never paired. That is merely awkward in a
+   browser, where the address can be typed. On an iPhone it is fatal: an installed home-screen app
+   runs with no address bar at all, and iOS gives it storage separate from Safari, so pairing in
+   Safari does not pair the installed app either. The owner could not reach the admin on the one
+   device the whole feature was built for.
+
+   Hiding it was never what protected anything - the token is - so it is simply visible now, and
+   quiet. It disappears once this device is paired, because the Admin button in the bar takes
+   over. */
 (function () {
-	var want = location.hash === '#admin';
-	if (!want) { try { want = !!localStorage.getItem('aqm-mc-device'); } catch (e) { want = false; } }
+	var foot = document.getElementById('aqm-app-foot');
+	var paired = false;
+	try { paired = !!localStorage.getItem('aqm-mc-device'); } catch (e) { paired = false; }
+	if (paired && foot) { foot.style.display = 'none'; }
+
 	function load() {
 		if (document.getElementById('aqm-adm-js')) { return; }
 		var s = document.createElement('script');
 		s.id = 'aqm-adm-js'; s.src = <?php echo wp_json_encode( $adm ); ?>;
 		document.body.appendChild(s);
 	}
-	if (want) { load(); }
+	if (paired || location.hash === '#admin') { load(); }
+
+	document.getElementById('aqm-app-owner').addEventListener('click', function () {
+		load();
+		// The screen opens off the hash, so setting it serves the already-loaded script and the
+		// one still arriving - it checks the hash when it initialises.
+		if (location.hash === '#admin') { window.dispatchEvent(new Event('hashchange')); }
+		else { location.hash = 'admin'; }
+	});
+
 	// Someone arriving at the plain address and then typing #admin gets it too, without a reload.
 	window.addEventListener('hashchange', function () { if (location.hash === '#admin') { load(); } });
 })();

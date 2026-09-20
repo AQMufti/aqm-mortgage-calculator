@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.10.0
+ * Version:     1.10.1
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,18 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.10.1 (19 Sep 2026): the owner could not reach his own admin on the one device it was built for.
+ *   - 1.10.0 showed the Admin button only once a device had paired, so a visitor would not see it.
+ *     That left no way IN on a device that had never paired. In a browser it is merely awkward -
+ *     type #admin. On an iPhone it is fatal: an INSTALLED home-screen app runs with no address bar
+ *     at all, and iOS gives it storage SEPARATE from Safari, so pairing in Safari does not pair the
+ *     installed app either. AQ found it immediately: "Where is the Admin log in on the App?"
+ *   - A quiet "Owner sign-in" link now sits at the foot of the app, always, on any device that has
+ *     not paired. Hiding it was never what protected anything - the device token is - so there is
+ *     nothing to lose by showing it: the screen it opens is useless without a code from Settings.
+ *     It disappears the moment this device pairs, because the Admin button in the bar takes over.
+ *   - Pairing and signing out now redraw both at once rather than waiting for a reload, so the
+ *     link goes and the button arrives the instant the exchange succeeds.
  * 1.10.0 (19 Sep 2026): the app has its own admin, and its own owner login. AQ: "If its a
  * standalone App, it should have it's own Admin interface, with an Admin/owner login, not requiring
  * to use any website."
@@ -259,7 +271,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.10.0' );
+define( 'AQM_MC_VERSION', '1.10.1' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
