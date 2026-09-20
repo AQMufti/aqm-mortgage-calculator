@@ -158,6 +158,7 @@ function aqm_mc_app_shell() {
 	$css   = aqm_mc_asset_url( 'aqm-mc.css' );
 	$core  = aqm_mc_asset_url( 'aqm-mc-core.js' );
 	$ui    = aqm_mc_asset_url( 'aqm-mc.js' );
+	$adm   = aqm_mc_asset_url( 'aqm-mc-admin.js' );
 	$man   = esc_url( home_url( '/' . AQM_MC_APP_PATH . '/manifest.webmanifest' ) );
 	$sw    = esc_url( home_url( '/' . AQM_MC_APP_PATH . '/sw.js' ) );
 	$scope = esc_url( home_url( '/' . AQM_MC_APP_PATH . '/' ) );
@@ -199,16 +200,78 @@ body{margin:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"S
 .aqm-app__update button{margin-left:auto;background:#393939;color:#fff;border:0;border-radius:6px;padding:8px 16px;font-size:.88rem;font-weight:600;cursor:pointer}
 .aqm-app__update button:focus-visible{outline:2px solid #A62021;outline-offset:2px}
 @media (max-width:760px){.aqm-app__wrap{padding:10px}.aqm-mc__card{padding:14px}}
+
+/* ------------------------------------------------------------- the owner's admin (1.10.0)
+   App-only, so it lives here rather than in aqm-mc.css, which the website page also loads and
+   which no visitor should be made to download this for. While the screen is open the calculator
+   underneath is hidden rather than scrolled past: on a phone, a long settings screen stacked
+   below a long calculator is unusable. */
+.aqm-app__admin{margin-left:8px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:5px;padding:5px 12px;font:inherit;font-size:.8rem;font-weight:600;cursor:pointer}
+.aqm-app__admin:focus-visible{outline:2px solid #fff;outline-offset:2px}
+body.aqm-adm-open .aqm-app__wrap,body.aqm-adm-open .aqm-app__install,body.aqm-adm-open .aqm-app__update{display:none}
+.aqm-adm{max-width:760px;margin:0 auto;padding:16px}
+.aqm-adm__head{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.aqm-adm__head h2{margin:0;font-size:1.3rem;color:#393939}
+.aqm-adm__x{margin-left:auto;background:#fff;border:1px solid #cfcfcf;border-radius:6px;padding:7px 14px;font:inherit;font-size:.85rem;cursor:pointer;color:#393939}
+.aqm-adm__body{background:#fff;border:1px solid #e2e2e2;border-radius:8px;padding:16px;margin-top:10px}
+.aqm-adm h3{margin:22px 0 6px;font-size:1rem;color:#393939;border-top:1px solid #eee;padding-top:16px}
+.aqm-adm h3:first-of-type{border-top:0;padding-top:0}
+.aqm-adm__lede{margin:.2em 0 1em;color:#393939}
+.aqm-adm__muted{color:#6b6b6b;font-size:.85rem}
+.aqm-adm__fine{color:#6b6b6b;font-size:.8rem;margin:.5em 0 0}
+.aqm-adm__count{background:#eee;color:#393939;border-radius:10px;padding:1px 8px;font-size:.78rem;vertical-align:middle}
+.aqm-adm__steps{margin:0 0 1em;padding-left:1.3em;color:#393939;font-size:.92rem}
+.aqm-adm__steps li{margin:.4em 0}
+.aqm-adm label{display:block;font-weight:600;font-size:.85rem;margin:14px 0 4px;color:#393939}
+.aqm-adm__in,.aqm-adm__ta,.aqm-adm__code{width:100%;box-sizing:border-box;border:1px solid #cfcfcf;border-radius:6px;padding:11px 12px;font:inherit;font-size:1rem;background:#fff;color:#393939}
+.aqm-adm__code{font-family:monospace;font-size:1.9rem;letter-spacing:.24em;text-align:center}
+.aqm-adm__ta{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88rem}
+.aqm-adm__go{display:block;width:100%;margin-top:12px;background:#A62021;color:#fff;border:0;border-radius:6px;padding:13px;font:inherit;font-size:.95rem;font-weight:600;cursor:pointer}
+.aqm-adm__go[disabled]{opacity:.6;cursor:default}
+.aqm-adm__go--quiet{background:#393939}
+.aqm-adm__out{display:block;width:100%;margin-top:10px;background:#fff;color:#A62021;border:1px solid #d9b3b4;border-radius:6px;padding:11px;font:inherit;font-size:.9rem;cursor:pointer}
+.aqm-adm__note{display:none}
+.aqm-adm__note.is-on{display:block;border-radius:6px;padding:10px 12px;margin:0 0 12px;font-size:.88rem}
+.aqm-adm__note.is-good{background:#eef7ee;border-left:3px solid #2e7d32;color:#1e4620}
+.aqm-adm__note.is-bad{background:#fdecec;border-left:3px solid #b32d2e;color:#7a1f20}
+.aqm-adm__list{list-style:none;margin:0;padding:0}
+.aqm-adm__list li{border-top:1px solid #f0f0f0;padding:10px 0;font-size:.9rem;color:#393939}
+.aqm-adm__list li:first-child{border-top:0}
+.aqm-adm__plain li{padding:6px 0}
+.aqm-adm__tick{display:flex;align-items:flex-start;gap:10px;font-weight:400;margin:0}
+.aqm-adm__tick input{margin-top:3px;width:20px;height:20px;flex:0 0 auto}
+.aqm-adm__row{border:1px solid #e2e2e2;border-radius:6px;padding:12px;font-weight:600}
+.aqm-adm__copy{margin-top:6px;background:#fff;border:1px solid #cfcfcf;border-radius:5px;padding:6px 10px;font:inherit;font-size:.8rem;cursor:pointer;color:#393939}
+@media (max-width:760px){.aqm-adm{padding:10px}.aqm-adm__body{padding:12px}}
 </style>
 </head>
 <body>
 <div class="aqm-app__bar">AQM Mortgage Calculator<a href="<?php echo $site; ?>">aqmuftirealty.com</a></div>
+<div id="aqm-app-admin"></div>
 <div class="aqm-app__off" id="aqm-app-off">You are offline. The rates below are the last ones this app downloaded &mdash; each shows the date it was read.</div>
 <div class="aqm-app__install" id="aqm-app-install" role="note"><span id="aqm-app-installtxt"></span></div>
 <div class="aqm-app__update" id="aqm-app-update" role="status"><span>A newer version of this calculator is ready.</span><button type="button" id="aqm-app-reload">Reload</button></div>
 <div class="aqm-app__wrap"><?php echo $body; ?></div>
 <script src="<?php echo esc_url( $core ); ?>"></script>
 <script src="<?php echo esc_url( $ui ); ?>"></script>
+<script>
+/* The owner's rates screen is fetched only when it is wanted - at #admin, or on a device that has
+   already paired. A visitor never downloads it, and there is nothing in the public shell to find:
+   the screen is useless without a device token, which only the pairing exchange can mint. */
+(function () {
+	var want = location.hash === '#admin';
+	if (!want) { try { want = !!localStorage.getItem('aqm-mc-device'); } catch (e) { want = false; } }
+	function load() {
+		if (document.getElementById('aqm-adm-js')) { return; }
+		var s = document.createElement('script');
+		s.id = 'aqm-adm-js'; s.src = <?php echo wp_json_encode( $adm ); ?>;
+		document.body.appendChild(s);
+	}
+	if (want) { load(); }
+	// Someone arriving at the plain address and then typing #admin gets it too, without a reload.
+	window.addEventListener('hashchange', function () { if (location.hash === '#admin') { load(); } });
+})();
+</script>
 <script>
 (function () {
 	var off = document.getElementById('aqm-app-off');
@@ -354,6 +417,7 @@ function aqm_mc_service_worker() {
 	$build = aqm_mc_app_build();
 	$shell = home_url( '/' . AQM_MC_APP_PATH . '/' );
 	$rates = home_url( '/wp-json/aqm-mc/v1/rates' );
+	$admin = home_url( '/wp-json/aqm-mc/v1/admin' );
 	$pre   = wp_json_encode( array_values( array_map( 'strval', array(
 		$shell,
 		aqm_mc_asset_url( 'aqm-mc.css' ),
@@ -368,6 +432,7 @@ var CACHE = 'aqm-mc-<?php echo esc_js( $build ); ?>';
 var PRECACHE = <?php echo $pre; ?>;
 var RATES = '<?php echo esc_js( $rates ); ?>';
 var SHELL = '<?php echo esc_js( $shell ); ?>';
+var ADMIN = '<?php echo esc_js( $admin ); ?>';
 
 self.addEventListener('install', function (e) {
 	e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(PRECACHE); }).then(function () { return self.skipWaiting(); }));
@@ -383,6 +448,14 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
 	var req = e.request;
 	if (req.method !== 'GET') { return; }
+
+	/* THE OWNER'S ADMIN IS NEVER CACHED, NOT EVEN AS A FALLBACK. Two reasons, either one enough.
+	   It is authenticated data, and a cache entry would leave it sitting on the device after the
+	   token that fetched it had been revoked. And its URL carries no version, so the cache-first
+	   branch at the bottom would answer /admin/state from the cache for good - the owner would tick
+	   a rate and watch the screen redraw with the figures it had the first time he opened it.
+	   Network or nothing: the screen says plainly when there is no connection. */
+	if (req.url.indexOf(ADMIN) === 0) { return; }
 
 	/* THE SHELL IS THE ONE CACHED THING WHOSE URL NEVER CHANGES.
 	   Everything else carries ?v=<version>.<mtime>, so a new release means a new URL and a cache hit

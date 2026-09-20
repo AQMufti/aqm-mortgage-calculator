@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.9.6
+ * Version:     1.10.0
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,48 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.10.0 (19 Sep 2026): the app has its own admin, and its own owner login. AQ: "If its a
+ * standalone App, it should have it's own Admin interface, with an Admin/owner login, not requiring
+ * to use any website."
+ *   - The rates screen now lives in the app: type your own rates, tick the ones read from lender
+ *     pages, see which sources have stopped updating, read every source now, turn the drop-down on
+ *     or off. That is everything wp-admin was being opened for.
+ *   - What has NOT changed, deliberately: the rates still live on the server. One copy is the rule
+ *     the whole design rests on - it is what stops an installed app and the website page ever
+ *     disagreeing about a figure. The app is a client of that data, and should be. What changes is
+ *     that nobody has to visit the website to manage it.
+ *   - The login is NOT a WordPress login. An Application Password for user 1 is total control of
+ *     aqmuftirealty.com; putting one on a phone to manage a list of interest rates makes a lost
+ *     phone a lost website. So the plugin issues its own DEVICE TOKEN, which unlocks six rate
+ *     endpoints and nothing else in WordPress - it is not a user, holds no capabilities, and cannot
+ *     read a post or touch another plugin. Only its hash is stored, so a database dump yields no
+ *     working credential.
+ *   - Pairing, once per device: Settings shows a 6-digit code, good for ten minutes and one use;
+ *     the app exchanges it for the token. The token itself is never typed, never displayed and
+ *     never put in a URL - a URL would land it in the access log and in browser history. The CODE
+ *     is held to the same standard: it reaches the settings screen in a transient, not in the
+ *     redirect URL. Five wrong guesses burn it from any address, and the caller is throttled for
+ *     fifteen minutes. Settings lists every paired device with when it was last used and from
+ *     where, and revokes any of them in one click; the app can sign itself out too.
+ *   - DESKTOP pairs itself. wp-admin and the app are the same origin, so on the computer that
+ *     generated the code the browser hands it over directly and the app pairs with one click -
+ *     reading six digits off one tab to type them into another tab of the same browser is a
+ *     pointless ceremony. Nothing crosses the network and nothing goes in a URL; the hand-off
+ *     expires with the code and is deleted the instant it is read, so it cannot be replayed. A
+ *     stale or expired one falls through to the six digits rather than to a dead end. The phone is
+ *     a different device, never sees it, and types the digits exactly as before.
+ *   - Devices name themselves from the user agent ("Windows Chrome", "iPhone Safari"), so the list
+ *     in Settings says which machine is which instead of four rows reading "A device".
+ *   - The admin endpoints are network-or-nothing in the service worker. They carry no ?v=, so the
+ *     cache-first branch would have answered /admin/state from cache for good - tick a rate, watch
+ *     the screen redraw with the figures it had an hour ago - and caching an authenticated response
+ *     would leave it on the device after the token was revoked.
+ *   - Found by its own tests, not in the field: a token revoked from the website while the screen
+ *     was open left every button showing the server's bare refusal on a screen where nothing worked.
+ *     Every failed call now goes through one handler that returns to the pairing screen.
+ *   - The screen is fetched only at #admin or on a device that has already paired, so a visitor
+ *     never downloads it, and there is nothing in the public shell worth finding: it is useless
+ *     without a token, which only the pairing exchange can mint.
  * 1.9.6 (19 Sep 2026): an old rate keeps its figure and gains its date, and Nunavut stops saying nil.
  *   - A rate that has not been re-read for a fortnight used to be published with an "(out of date)"
  *     label, and a draft of this release went further and dropped it altogether. AQ overruled that,
@@ -217,7 +259,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.9.6' );
+define( 'AQM_MC_VERSION', '1.10.0' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
@@ -379,3 +421,6 @@ add_shortcode( 'aqm_mortgage_calculator', function ( $atts ) { return aqm_mc_bui
 require_once __DIR__ . '/aqm-mc-app.php';
 /* After the app file, which defines AQM_MC_APP_PATH - the help links to the app by that path. */
 require_once __DIR__ . '/aqm-mc-help.php';
+/* Also after the app file: the pairing panel links to the app's admin screen by that path. */
+require_once __DIR__ . '/aqm-mc-admin.php';
+AQM_MC_Admin::boot();

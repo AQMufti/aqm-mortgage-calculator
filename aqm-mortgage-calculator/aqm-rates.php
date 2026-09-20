@@ -766,8 +766,12 @@ class AQM_MC_Rates {
 		echo '</ul>';
 		echo '<p class="description">Desjardins asks not to be read automatically, and Meridian, EQ Bank, B2B Bank and Community Trust block automated visits, so they are not listed. Type their rates in above if you want them.</p>';
 		echo '<p class="description">Read once a day. A rate is only ever a starting point for the calculator: it is not an offer, and it is not a rate you or a visitor has been approved for. Rates quoted to a buyer depend on the lender, the property and the buyer.</p>';
+
 		echo '<p><button type="submit" form="aqm-mc-form" class="button button-primary">Save settings</button> <button type="submit" form="aqm-mc-form" name="refresh" value="1" class="button">Save and read rates now</button></p>';
 		echo '<p class="description">Last read: ' . ( isset( $store['time'] ) ? esc_html( date_i18n( 'j M Y, g:i a', (int) $store['time'] ) ) : 'never' ) . '. Next: ' . ( wp_next_scheduled( self::CRON ) ? esc_html( date_i18n( 'j M Y, g:i a', wp_next_scheduled( self::CRON ) ) ) : 'not scheduled' ) . '.</p>';
+
+		/* Last, deliberately: it is the section that makes the rest of this page optional. */
+		if ( class_exists( 'AQM_MC_Admin' ) ) { echo '<hr>'; AQM_MC_Admin::panel(); }
 		echo '</div>';
 	}
 }
