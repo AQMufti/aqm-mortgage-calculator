@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AQM Mortgage Calculator
  * Description: Canadian mortgage calculator covering every province and territory: three live side-by-side scenarios (default 10%, 15%, 20% down, all editable), semi-annual compounding, CMHC insurance and the provincial tax on it, minimum down payment and $1.5M insured-price rules, 30-year amortization eligibility, new-home GST/HST relief, land transfer tax (or the land titles fee that replaces it) with first-time buyer relief, a balance chart and a full amortization schedule with CSV download. Shortcodes: [aqm_mortgage_calculator] for the calculator, [aqm_mortgage_guide] for the public guide. No external scripts.
- * Version:     1.10.1
+ * Version:     1.11.0
  * Author:      A. Q. Mufti
  * Plugin URI:  https://github.com/AQMufti/aqm-mortgage-calculator
  * License:     GPL-2.0-or-later
@@ -10,6 +10,29 @@
  *
  * Copyright (c) 2026 A. Q. Mufti. All rights reserved.
  *
+ * 1.11.0 (20 Sep 2026): every scenario can hold its own property. AQ: "bring the property tabs down
+ * to each scenario so it'll give flexibility to either have one property with 3 rate, DP scenarios or
+ * 3 different properties with same or different rates etc."
+ *   - The shared "The property" card is gone. Price, province, municipality, payment frequency,
+ *     mortgage term, first-time buyer and newly-built now sit INSIDE each scenario, so the three
+ *     columns can be three different houses - or the same house bought in two provinces, or monthly
+ *     against accelerated bi-weekly, neither of which this calculator could show before.
+ *   - B AND C FOLLOW A UNTIL TOLD OTHERWISE, which is what keeps the ordinary case free: type the
+ *     price once and compare down payments exactly as always. A following scenario hides its own
+ *     property block entirely and reads A's, so the two can never quietly disagree - and three full
+ *     property blocks stacked would be unusable on a phone. "Use a different property" copies A's
+ *     values across and hands that scenario the wheel; "Same as Scenario A" gives it back.
+ *   - The results follow the property, not the page. compute() now builds one context per scenario,
+ *     so each column carries its own land transfer tax, municipal tax, first-time-buyer and new-build
+ *     relief, sales tax on a new build, premium tax and registration fee. Where the three properties
+ *     agree, every figure and label is what it always was; where they differ, a label that can only
+ *     name one thing falls back to a general name rather than lying about two of the columns.
+ *   - The government programs belong to a property too, so with different properties in play they
+ *     follow the scenario selected for the schedule and say which one they are describing.
+ *   - Caught by its own test before it shipped: the jurisdiction names in the rules file already
+ *     carry HTML entities, so escaping them a second time printed "Montr&eacute;al" and
+ *     "&ldquo;welcome tax&rdquo;" on screen. Escape what comes from lenders and the settings box;
+ *     never re-escape our own table.
  * 1.10.1 (19 Sep 2026): the owner could not reach his own admin on the one device it was built for.
  *   - 1.10.0 showed the Admin button only once a device had paired, so a visitor would not see it.
  *     That left no way IN on a device that had never paired. In a browser it is merely awkward -
@@ -271,7 +294,7 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-define( 'AQM_MC_VERSION', '1.10.1' );
+define( 'AQM_MC_VERSION', '1.11.0' );
 define( 'AQM_MC_FILE', __FILE__ );
 require_once __DIR__ . '/aqm-rates.php';
 AQM_MC_Rates::boot();
@@ -338,18 +361,6 @@ function aqm_mc_build( $atts = array(), $enqueue = true ) {
 <noscript><p>This calculator needs JavaScript switched on.</p></noscript>
 <?php echo aqm_mc_help_panel(); ?>
 
-<div class="aqm-mc__card">
-	<h3>The property</h3>
-	<div class="aqm-mc__shared">
-		<div><label for="<?php echo $id; ?>-price">Purchase price</label><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" id="<?php echo $id; ?>-price" data-k="price" data-fmt="money"></div></div>
-		<div><label for="<?php echo $id; ?>-loc">Where you are buying</label><select id="<?php echo $id; ?>-loc" data-k="loc"><option value="on">Ontario (outside Toronto)</option></select></div>
-		<div><label for="<?php echo $id; ?>-freq">Payment frequency</label><select id="<?php echo $id; ?>-freq" data-k="freq"><option value="12">Monthly</option><option value="24">Semi-monthly</option><option value="26">Bi-weekly</option><option value="26a">Accelerated bi-weekly</option><option value="52">Weekly</option><option value="52a">Accelerated weekly</option></select></div>
-		<div><label for="<?php echo $id; ?>-term">Mortgage term</label><select id="<?php echo $id; ?>-term" data-k="term"><?php foreach ( array( 1, 2, 3, 4, 5, 7, 10 ) as $t ) { echo '<option value="' . $t . '"' . ( 5 === $t ? ' selected' : '' ) . '>' . $t . ( 1 === $t ? ' year' : ' years' ) . '</option>'; } ?></select></div>
-		<label class="aqm-mc__chk"><input type="checkbox" data-k="ftb"> First-time home buyer</label>
-		<label class="aqm-mc__chk"><input type="checkbox" data-k="newbuild"> Newly built home (from a builder)</label>
-		<div class="aqm-mc__hst" data-k="hstwrap"><label for="<?php echo $id; ?>-hst">The price above is</label><select id="<?php echo $id; ?>-hst" data-k="hstmode"><option value="incl">Builder's all-in price (HST included)</option><option value="plus">Before HST</option></select></div>
-	</div>
-</div>
 
 <?php if ( $boc ) : ?>
 <div class="aqm-mc__card aqm-mc__boc">
@@ -373,6 +384,21 @@ function aqm_mc_build( $atts = array(), $enqueue = true ) {
 	<?php foreach ( array( 'A', 'B', 'C' ) as $i => $L ) : ?>
 		<div class="aqm-mc__sc" style="--c:var(--s<?php echo $i; ?>)" data-s="<?php echo $i; ?>">
 			<h4><i aria-hidden="true"></i>Scenario <?php echo $L; ?></h4>
+<?php if ( $i > 0 ) : ?>
+			<div class="aqm-mc__linkbar" data-k="linkbar">
+				<span data-k="linksum"></span>
+				<button type="button" data-k="linktoggle"></button>
+			</div>
+<?php endif; ?>
+			<div class="aqm-mc__prop" data-k="prop">
+				<div><label for="<?php echo "$id-price$i"; ?>">Purchase price</label><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" id="<?php echo "$id-price$i"; ?>" data-k="price" data-fmt="money"></div></div>
+				<div><label for="<?php echo "$id-loc$i"; ?>">Where you are buying</label><select id="<?php echo "$id-loc$i"; ?>" data-k="loc"><option value="on">Ontario (outside Toronto)</option></select></div>
+				<div><label for="<?php echo "$id-freq$i"; ?>">Payment frequency</label><select id="<?php echo "$id-freq$i"; ?>" data-k="freq"><option value="12">Monthly</option><option value="24">Semi-monthly</option><option value="26">Bi-weekly</option><option value="26a">Accelerated bi-weekly</option><option value="52">Weekly</option><option value="52a">Accelerated weekly</option></select></div>
+				<div><label for="<?php echo "$id-term$i"; ?>">Mortgage term</label><select id="<?php echo "$id-term$i"; ?>" data-k="term"><?php foreach ( array( 1, 2, 3, 4, 5, 7, 10 ) as $t ) { echo '<option value="' . $t . '"' . ( 5 === $t ? ' selected' : '' ) . '>' . $t . ( 1 === $t ? ' year' : ' years' ) . '</option>'; } ?></select></div>
+				<label class="aqm-mc__chk"><input type="checkbox" data-k="ftb"> First-time home buyer</label>
+				<label class="aqm-mc__chk"><input type="checkbox" data-k="newbuild"> Newly built home (from a builder)</label>
+				<div class="aqm-mc__hst" data-k="hstwrap"><label for="<?php echo "$id-hst$i"; ?>">The price above is</label><select id="<?php echo "$id-hst$i"; ?>" data-k="hstmode"><option value="incl">Builder's all-in price (HST included)</option><option value="plus">Before HST</option></select></div>
+			</div>
 			<div class="aqm-mc__two">
 				<div><label for="<?php echo "$id-dp$i"; ?>">Down payment (%)</label><div class="aqm-mc__sfx"><input type="text" inputmode="decimal" autocomplete="off" id="<?php echo "$id-dp$i"; ?>" data-k="dpct" data-fmt="pct"><span>%</span></div></div>
 				<div><label for="<?php echo "$id-dd$i"; ?>">Down payment ($)</label><div class="aqm-mc__pfx"><span>$</span><input type="text" inputmode="numeric" autocomplete="off" id="<?php echo "$id-dd$i"; ?>" data-k="ddol" data-fmt="money"></div></div>

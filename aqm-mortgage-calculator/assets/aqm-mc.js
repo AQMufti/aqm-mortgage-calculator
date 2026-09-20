@@ -65,7 +65,7 @@
 		var q = function (s, c) { return (c || root).querySelector(s); };
 		var qa = function (s, c) { return Array.prototype.slice.call((c || root).querySelectorAll(s)); };
 		var scs = qa('.aqm-mc__sc');
-		var dollarLock = [false, false, false], state = { scen: 0, view: 'year' }, results = [], ctx = {};
+		var dollarLock = [false, false, false], state = { scen: 0, view: 'year' }, results = [], ctx = {}, ctxs = [];
 
 		/* Lender rates, when the site has any: a drop-down above each scenario's rate box. */
 		var RATES = (cfg.rates || []).filter(function (r) { return r && +r.rate > 0; })
@@ -120,33 +120,88 @@
 			root.querySelector('.aqm-mc__scen').parentNode.appendChild(note);
 		}
 
-		/* Build the places list from the jurisdiction table, so the two can never drift apart. */
-		var locSel = q('[data-k=loc]');
-		locSel.innerHTML = JORDER.map(function (k) { return '<option value="' + k + '">' + JUR[k].name + '</option>'; }).join('');
-		locSel.value = JUR[cfg.loc] ? cfg.loc : 'on';
+		/* ------------------------------------------------- one property, or three
+		   AQ, 20 Sep 2026: "bring the property tabs down to each scenario so it'll give flexibility
+		   to either have one property with 3 rate, DP scenarios or 3 different properties with same
+		   or different rates etc."
 
-		/* Quebec and Nova Scotia set their transfer tax municipally, so those two need a second
-		   choice. The box is built once and shown only for a province that has one. */
-		var subWrap = document.createElement('div');
-		subWrap.className = 'aqm-mc__sub';
-		subWrap.innerHTML = '<label for="' + root.id + '-sub"></label><select id="' + root.id + '-sub" data-k="sub"></select>';
-		locSel.parentNode.parentNode.insertBefore(subWrap, locSel.parentNode.nextSibling);
-		function fillSub() {
-			var J = jur(locSel.value), sel = q('[data-k=sub]');
-			if (!J.subs) { subWrap.style.display = 'none'; sel.innerHTML = ''; return; }
-			var keys = Object.keys(J.subs), keep = sel.value;
-			subWrap.style.display = '';
-			subWrap.querySelector('label').innerHTML = J.subLabel || 'Which municipality';
-			sel.innerHTML = keys.map(function (k) { return '<option value="' + k + '">' + J.subs[k].name + '</option>'; }).join('');
-			sel.value = ( keys.indexOf(keep) > -1 ) ? keep : keys[0];
-		}
-		fillSub();
+		   So every scenario owns a whole property - price, place, municipality, frequency, term,
+		   first-time buyer, new build. B and C FOLLOW A until told otherwise, which keeps the common
+		   case exactly as cheap as it was: type the price once and compare down payments.
 
-		q('[data-k=price]').value = N0.format(cfg.price || 850000);
+		   While a scenario follows A its own property block is hidden and never read - the figures
+		   come from A - so the two can never quietly disagree. Pressing "Use a different property"
+		   copies A's values across and hands that scenario the wheel; there is always a way back. */
+		var linked = [false, true, true];
+		function propEl(i) { return linked[i] ? scs[0] : scs[i]; }
+
+		var PROP_KEYS = ['price', 'loc', 'freq', 'term', 'hstmode'];
+		var PROP_CHKS = ['ftb', 'newbuild'];
+
 		scs.forEach(function (el, i) {
+			var locSel = q('[data-k=loc]', el);
+			locSel.innerHTML = JORDER.map(function (k) { return '<option value="' + k + '">' + JUR[k].name + '</option>'; }).join('');
+			locSel.value = JUR[cfg.loc] ? cfg.loc : 'on';
+
+			/* Quebec and Nova Scotia set their transfer tax municipally, so those two need a second
+			   choice. One per scenario now, since two scenarios can sit in different provinces. */
+			var subWrap = document.createElement('div');
+			subWrap.className = 'aqm-mc__sub';
+			subWrap.innerHTML = '<label for="' + root.id + '-sub' + i + '"></label><select id="' + root.id + '-sub' + i + '" data-k="sub"></select>';
+			locSel.parentNode.parentNode.insertBefore(subWrap, locSel.parentNode.nextSibling);
+
+			q('[data-k=price]', el).value = N0.format(cfg.price || 850000);
 			q('[data-k=dpct]', el).value = String((cfg.downs || [10, 15, 20])[i]);
 			q('[data-k=rate]', el).value = String(cfg.rate || 4.19);
 			q('[data-k=amort]', el).value = String(cfg.amort || 25);
+		});
+
+		function fillSub(el) {
+			var J = jur(q('[data-k=loc]', el).value), sel = q('[data-k=sub]', el), wrap = el.querySelector('.aqm-mc__sub');
+			if (!J.subs) { wrap.style.display = 'none'; sel.innerHTML = ''; return; }
+			var keys = Object.keys(J.subs), keep = sel.value;
+			wrap.style.display = '';
+			wrap.querySelector('label').innerHTML = J.subLabel || 'Which municipality';
+			sel.innerHTML = keys.map(function (k) { return '<option value="' + k + '">' + J.subs[k].name + '</option>'; }).join('');
+			sel.value = ( keys.indexOf(keep) > -1 ) ? keep : keys[0];
+		}
+		scs.forEach(function (el) { fillSub(el); });
+
+		/** Copies A's whole property onto another scenario, so unlinking starts from what was shown. */
+		function copyProp(from, to) {
+			PROP_KEYS.forEach(function (k) { q('[data-k=' + k + ']', to).value = q('[data-k=' + k + ']', from).value; });
+			PROP_CHKS.forEach(function (k) { q('[data-k=' + k + ']', to).checked = q('[data-k=' + k + ']', from).checked; });
+			fillSub(to);
+			q('[data-k=sub]', to).value = q('[data-k=sub]', from).value;
+			q('[data-k=sub]', to).setAttribute('data-for', q('[data-k=loc]', to).value);
+		}
+
+		/** Draws each scenario's "same as A" bar and shows or hides its property block. */
+		function syncLinks() {
+			scs.forEach(function (el, i) {
+				if (i === 0) { return; }
+				var bar = q('[data-k=linkbar]', el), btn = q('[data-k=linktoggle]', el), sum = q('[data-k=linksum]', el);
+				var prop = q('[data-k=prop]', el);
+				prop.style.display = linked[i] ? 'none' : '';
+				bar.className = 'aqm-mc__linkbar' + (linked[i] ? ' is-linked' : '');
+				if (linked[i]) {
+					var a = scs[0], J = jur(q('[data-k=loc]', a).value);
+					sum.innerHTML = 'Same property as <b>Scenario A</b><small>' + M0.format(parseNum(q('[data-k=price]', a).value)) + ' &middot; ' + J.name + '</small>';
+					btn.textContent = 'Use a different property';
+				} else {
+					sum.innerHTML = '<b>Its own property</b>';
+					btn.textContent = 'Same as Scenario A';
+				}
+			});
+		}
+
+		scs.forEach(function (el, i) {
+			if (i === 0) { return; }
+			q('[data-k=linktoggle]', el).addEventListener('click', function () {
+				if (linked[i]) { copyProp(scs[0], el); linked[i] = false; }
+				else { linked[i] = true; }
+				syncLinks(); compute();
+			});
 		});
 
 		function costRows(when) {
@@ -165,18 +220,23 @@
 		q('[data-part=at]').innerHTML = costRows('at');
 		q('[data-part=before]').innerHTML = costRows('before');
 
-		function compute() {
-			var entered = parseNum(q('[data-k=price]').value), loc = q('[data-k=loc]').value, fv = q('[data-k=freq]').value;
-			var term = +q('[data-k=term]').value, ftb = q('[data-k=ftb]').checked, nb = q('[data-k=newbuild]').checked, hm = q('[data-k=hstmode]').value;
-			q('[data-k=hstwrap]').classList.toggle('is-on', nb);
+		/**
+		 * Everything one property implies. Read from whichever scenario owns it - a linked scenario
+		 * reads A's, so the figures cannot drift from what the screen shows.
+		 */
+		function readProp(i) {
+			var el = propEl(i);
+			var entered = parseNum(q('[data-k=price]', el).value), loc = q('[data-k=loc]', el).value, fv = q('[data-k=freq]', el).value;
+			var term = +q('[data-k=term]', el).value, ftb = q('[data-k=ftb]', el).checked, nb = q('[data-k=newbuild]', el).checked, hm = q('[data-k=hstmode]', el).value;
+			q('[data-k=hstwrap]', el).classList.toggle('is-on', nb);
 			var J = jur(loc);
-			if (q('[data-k=sub]').getAttribute('data-for') !== loc) { fillSub(); q('[data-k=sub]').setAttribute('data-for', loc); }
-			var S = ( J.subs && J.subs[ q('[data-k=sub]').value ] ) ? J.subs[ q('[data-k=sub]').value ] : null;
+			var sub = q('[data-k=sub]', el);
+			if (sub.getAttribute('data-for') !== loc) { fillSub(el); sub.setAttribute('data-for', loc); }
+			var S = ( J.subs && J.subs[ sub.value ] ) ? J.subs[ sub.value ] : null;
 			var hst = null, price = entered;
 			if (nb && entered > 0) {
 				if (hm === 'plus') { hst = hstFor(entered, ftb, J); price = entered + hst.net; } else { hst = hstFromAllIn(entered, ftb, J); }
 			}
-			var perYear = parseInt(fv, 10), accel = /a$/.test(fv);
 			var ltt = ( S ? S.tax : J.tax )( price );
 			/* B.C.'s two exemptions are mutually exclusive, so take whichever is worth more. */
 			var ontRebate = Math.max(
@@ -186,6 +246,19 @@
 			var usedNbEx = J.nbEx && nb && ontRebate > ((ftb && J.ftb) ? J.ftb(price, ltt) : 0);
 			var mltt = J.muni ? J.muni(price) : 0;
 			var torRebate = (ftb && J.muniFtb) ? J.muniFtb(price, mltt) : 0;
+			return {
+				entered: entered, price: price, loc: loc, J: J, S: S, fv: fv, term: term, ftb: ftb, nb: nb, hm: hm,
+				hst: hst, ltt: ltt, ontRebate: ontRebate, usedNbEx: usedNbEx, mltt: mltt, torRebate: torRebate,
+				perYear: parseInt(fv, 10), accel: /a$/.test(fv), own: !linked[i]
+			};
+		}
+
+		/** True when every scenario is looking at the same property, which is the usual case. */
+		function onePlace() { return !linked.some(function (l, i) { return i > 0 && !l; }); }
+
+		function compute() {
+			ctxs = [0, 1, 2].map(readProp);
+			ctx = ctxs[0];
 			var colCost = [0, 1, 2].map(function (i) {
 				var at = 0, before = 0;
 				qa('[data-cost][data-col="' + i + '"]').forEach(function (el) {
@@ -194,9 +267,11 @@
 				});
 				return { at: at, before: before };
 			});
-			ctx = { entered: entered, price: price, loc: loc, J: J, S: S, fv: fv, term: term, ftb: ftb, nb: nb, hm: hm, hst: hst, ltt: ltt, ontRebate: ontRebate, usedNbEx: usedNbEx, mltt: mltt, torRebate: torRebate };
 
 			results = scs.map(function (el, i) {
+				var c = ctxs[i], price = c.price, J = c.J, ftb = c.ftb, nb = c.nb;
+				var perYear = c.perYear, accel = c.accel, term = c.term;
+				var ltt = c.ltt, ontRebate = c.ontRebate, mltt = c.mltt, torRebate = c.torRebate;
 				var dp = q('[data-k=dpct]', el), dd = q('[data-k=ddol]', el);
 				var down;
 				if (dollarLock[i]) { down = Math.min(parseNum(dd.value), price); setField(dp, price > 0 ? down / price * 100 : 0, 'pct'); }
@@ -243,23 +318,42 @@
 
 		function renderKpis() {
 			q('[data-k=kpis]').innerHTML = results.map(function (x, i) {
-				return '<div class="aqm-mc__kpi" style="--c:' + COLORS[i] + '"><small>' + NAMES[i] + ' &middot; ' + fl(x.pct) + '% down</small><strong>' + M2.format(x.pay) + '</strong><span>' + FREQ[ctx.fv].toLowerCase() + ' &middot; mortgage ' + M0.format(x.loan) + ' &middot; cash needed ' + M0.format(x.cash) + '</span></div>';
+				var c = ctxs[i];
+				return '<div class="aqm-mc__kpi" style="--c:' + COLORS[i] + '"><small>' + NAMES[i] + ' &middot; ' + fl(x.pct) + '% down'
+					+ (onePlace() ? '' : ' &middot; ' + (c.J.short || c.J.name) + ' ' + M0.format(c.price))
+					+ '</small><strong>' + M2.format(x.pay) + '</strong><span>' + FREQ[c.fv].toLowerCase() + ' &middot; mortgage ' + M0.format(x.loan) + ' &middot; cash needed ' + M0.format(x.cash) + '</span></div>';
 			}).join('');
 		}
 
 		function renderCompare() {
-			var row = function (label, fn, cls) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>' + results.map(function (x) { return '<td>' + fn(x) + '</td>'; }).join('') + '</tr>'; };
+			var row = function (label, fn, cls) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>' + results.map(function (x, i) { return '<td>' + fn(x, i) + '</td>'; }).join('') + '</tr>'; };
+			/* A property row. Each column reads its OWN property, so three different places show
+			   three different taxes; when they are all the same property every cell matches, which
+			   is exactly what this table showed before any of this existed. */
+			var prow = function (label, fn, cls) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>' + ctxs.map(function (c, i) { return '<td>' + fn(c, i) + '</td>'; }).join('') + '</tr>'; };
 			var same = function (label, v, cls) { return row(label, function () { return v; }, cls); };
 			var group = function (label) { return '<tr class="aqm-mc__group"><td colspan="4">' + label + '</td></tr>'; };
-			var h = ctx.hst;
-			var out = group('Property')
-				+ same('Purchase price' + (h ? (ctx.hm === 'plus' ? ' incl. net HST' : ' (all-in)') : ''), M0.format(ctx.price));
-			if (h) {
-				out += same('Price before HST', M0.format(h.base))
-					+ same('HST at 13%', M0.format(h.fed + h.prov))
-					+ same('Federal portion relief' + (h.fthb >= h.fedRelief && h.fthb > 0 ? ' (first-time buyer rebate)' : ''), '-' + M0.format(h.fedRelief))
-					+ same('Ontario portion relief', '-' + M0.format(h.provRelief))
-					+ same('HST you pay after relief', M0.format(h.net), 'aqm-mc__em');
+			/* A label can only name one thing. Where the three properties agree it says what they
+			   are; where they differ it falls back to a general name rather than lying about two
+			   of the columns. */
+			var agree = function (fn) { var a = fn(ctxs[0]); return ctxs.every(function (c) { return fn(c) === a; }) ? a : null; };
+			var anyHst = ctxs.some(function (c) { return !!c.hst; });
+
+			var out = group('Property');
+			if (!onePlace()) {
+				out += prow('Which property', function (c, i) { return c.own ? '<b>Its own</b>' : 'Same as A'; }, 'aqm-mc__notes')
+					+ prow('Where', function (c) { return (c.J.short || c.J.name) + (c.S ? '<small><br>' + c.S.name + '</small>' : ''); });
+			}
+			out += prow('Purchase price' + (anyHst ? '' : ''), function (c) {
+				return M0.format(c.price) + (c.hst ? '<small><br>' + (c.hm === 'plus' ? 'incl. net HST' : 'all-in') + '</small>' : '');
+			});
+			if (anyHst) {
+				var hl = agree(function (c) { return c.J.nhName; }) || 'sales tax';
+				out += prow('Price before ' + hl, function (c) { return c.hst ? M0.format(c.hst.base) : '&mdash;'; })
+					+ prow(hl.toUpperCase() === hl ? hl : hl, function (c) { return c.hst ? M0.format(c.hst.fed + c.hst.prov) + '<small><br>' + c.J.nhRate + '</small>' : '&mdash;'; })
+					+ prow('Federal portion relief', function (c) { return c.hst ? '-' + M0.format(c.hst.fedRelief) + (c.hst.fthb >= c.hst.fedRelief && c.hst.fthb > 0 ? '<small><br>first-time buyer</small>' : '') : '&mdash;'; })
+					+ prow('Provincial portion relief', function (c) { return c.hst ? '-' + M0.format(c.hst.provRelief) : '&mdash;'; })
+					+ prow(hl + ' you pay after relief', function (c) { return c.hst ? M0.format(c.hst.net) : '&mdash;'; }, 'aqm-mc__em');
 			}
 			out += group('Mortgage')
 				+ row('Down payment', function (x) { return M0.format(x.down) + ' <small>(' + fl(x.pct) + '%)</small>'; })
@@ -267,9 +361,9 @@
 				+ row('CMHC insurance premium', function (x) { return x.pr ? M0.format(x.prem) + ' <small>(' + fl(x.pr * 100) + '%)</small>' : 'Not needed'; })
 				+ row('Total mortgage', function (x) { return M0.format(x.loan); }, 'aqm-mc__em')
 				+ row('Interest rate / amortization', function (x) { return fl(x.rate * 100) + '% / ' + x.amort + ' yrs'; })
-				+ row(FREQ[ctx.fv] + ' payment', function (x) { return M2.format(x.pay); }, 'aqm-mc__em')
+				+ row((agree(function (c) { return c.fv; }) ? FREQ[ctx.fv] + ' payment' : 'Payment'), function (x, i) { return M2.format(x.pay) + (agree(function (c) { return c.fv; }) ? '' : '<small><br>' + FREQ[ctxs[i].fv].toLowerCase() + '</small>'); }, 'aqm-mc__em')
 				+ row('Paid off in', function (x) { return (Math.round(x.payoff * 10) / 10) + ' years'; })
-				+ group('Over the ' + ctx.term + '-year term')
+				+ group(agree(function (c) { return c.term; }) ? 'Over the ' + ctx.term + '-year term' : 'Over each scenario&rsquo;s term')
 				+ row('Total payments', function (x) { return M0.format(x.tPay); })
 				+ row('Interest paid', function (x) { return M0.format(x.tI); })
 				+ row('Principal paid', function (x) { return M0.format(x.tP); })
@@ -281,12 +375,22 @@
 				+ group('Cash needed at closing')
 				+ '<tr class="aqm-mc__notes"><td colspan="4">Typical amounts are filled in below the taxes; type over any of them, per scenario, to match your quotes.</td></tr>'
 				+ row('Down payment', function (x) { return M0.format(x.down); })
-				+ same(ctx.J.taxName + (ctx.S ? ' &mdash; ' + ctx.S.name : ''), M0.format(ctx.ltt))
-				+ (ctx.ontRebate > 0 ? same(ctx.usedNbEx ? ctx.J.nbExName : ctx.J.ftbName, '-' + M0.format(ctx.ontRebate)) : '')
-				+ (ctx.J.muni ? same(ctx.J.muniName, M0.format(ctx.mltt)) : '')
-				+ (ctx.J.muni && ctx.torRebate > 0 ? same(ctx.J.muniFtbName, '-' + M0.format(ctx.torRebate)) : '')
-				+ (ctx.J.pst ? row(ctx.J.pstName, function (x) { return M0.format(x.pst); }) : '')
-				+ (ctx.J.mtgFee ? row('Mortgage registration fee', function (x) { return M0.format(x.mtgFee); }) : '');
+				+ prow(agree(function (c) { return c.J.taxName + (c.S ? ' &mdash; ' + c.S.name : ''); }) || 'Land transfer tax',
+					function (c) { return M0.format(c.ltt) + (agree(function (z) { return z.J.taxName; }) ? '' : '<small><br>' + c.J.taxName + '</small>'); })
+				+ (ctxs.some(function (c) { return c.ontRebate > 0; })
+					? prow(agree(function (c) { return c.usedNbEx ? c.J.nbExName : c.J.ftbName; }) || 'First-time buyer / new-build relief',
+						function (c) { return c.ontRebate > 0 ? '-' + M0.format(c.ontRebate) : '&mdash;'; }) : '')
+				+ (ctxs.some(function (c) { return c.J.muni; })
+					? prow(agree(function (c) { return c.J.muniName; }) || 'Municipal land transfer tax',
+						function (c) { return c.J.muni ? M0.format(c.mltt) : '&mdash;'; }) : '')
+				+ (ctxs.some(function (c) { return c.J.muni && c.torRebate > 0; })
+					? prow(agree(function (c) { return c.J.muniFtbName; }) || 'Municipal first-time buyer rebate',
+						function (c) { return c.torRebate > 0 ? '-' + M0.format(c.torRebate) : '&mdash;'; }) : '')
+				+ (ctxs.some(function (c) { return c.J.pst; })
+					? row(agree(function (c) { return c.J.pstName; }) || 'Tax on the insurance premium',
+						function (x, i) { return ctxs[i].J.pst ? M0.format(x.pst) : '&mdash;'; }) : '')
+				+ (ctxs.some(function (c) { return c.J.mtgFee; })
+					? row('Mortgage registration fee', function (x, i) { return ctxs[i].J.mtgFee ? M0.format(x.mtgFee) : '&mdash;'; }) : '');
 			q('[data-part=top]').innerHTML = out;
 			q('[data-part=mid]').innerHTML = row('Total due at closing', function (x) { return M0.format(x.closing); }, 'aqm-mc__em')
 				+ group('Paid before closing')
@@ -296,9 +400,21 @@
 				+ row('Total cash needed to buy', function (x) { return M0.format(x.cash); }, 'aqm-mc__em');
 		}
 
+		/**
+		 * The programs are a property's, not a mortgage's - first-time buyer relief, new-home tax
+		 * relief, the provincial rebate all follow the price and the place. With three properties in
+		 * play there is no single right answer, so this follows the scenario selected for the
+		 * schedule below and says which one it is describing.
+		 */
 		function renderPrograms() {
-			var c = ctx, items = [], anyInsured = results.some(function (x) { return x.insured; });
+			var pick = onePlace() ? 0 : state.scen;
+			var c = ctxs[pick], items = [], anyInsured = results.some(function (x) { return x.insured; });
 			var li = function (cls, title, body) { items.push('<li class="is-' + cls + '"><b>' + title + '</b>' + body + '</li>'); };
+			if (!onePlace()) {
+				items.push('<li class="is-note aqm-mc__forwhich"><b>These apply to ' + NAMES[pick] + '</b>'
+					+ M0.format(c.price) + ' in ' + c.J.name + (c.S ? ', ' + c.S.name : '')
+					+ '. The scenarios hold different properties, so pick another above to see its programs.</li>');
+			}
 			li(c.price >= R.cap && anyInsured ? 'warn' : 'yes', 'Down payment and the $1.5 million limit',
 				'Minimum for this price: <em>' + M0.format(Math.ceil(R.minDown(c.price))) + '</em> (5% of the first $500,000, 10% of the rest up to $1.5 million). Mortgage insurance, and so less than 20% down, is available up to <em>$1,499,999</em>.');
 			li(c.ftb || c.nb ? 'yes' : 'no', '30-year amortization with less than 20% down',
@@ -429,10 +545,18 @@
 			var b = e.target.closest('button');
 			if (!b) { return; }
 			if (b.hasAttribute('data-csv')) { csv(); return; }
-			if (b.hasAttribute('data-scen')) { state.scen = +b.getAttribute('data-scen'); qa('[data-scen]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); }
+			if (b.hasAttribute('data-scen')) {
+				state.scen = +b.getAttribute('data-scen');
+				qa('[data-scen]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+				/* The programs belong to a property, so when the scenarios hold different ones they
+				   follow this selection too - otherwise picking Scenario C would show C's schedule
+				   beside B's rebates. */
+				if (!onePlace()) { renderPrograms(); }
+			}
 			if (b.hasAttribute('data-view')) { state.view = b.getAttribute('data-view'); qa('[data-view]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); }
 			renderSched();
 		});
+		syncLinks();
 		compute();
 	}
 

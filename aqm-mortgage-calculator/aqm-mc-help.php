@@ -103,8 +103,8 @@ falls, and it is the single clearest argument the calculator makes: put the thre
 side and the cost of a smaller down payment stops being abstract.</p>
 <p><strong>A 30-year amortization with less than 20% down</strong> is only open to first-time buyers
 and to newly built homes, and it costs 0.20% more in premium. With 20% or more down, any buyer can
-choose 30 years. Tick the boxes at the top and the calculator applies the rule rather than leaving
-you to remember it.</p>',
+choose 30 years. Tick the boxes in the scenario and the calculator applies the rule rather than
+leaving you to remember it.</p>',
 		),
 
 		array(
@@ -285,9 +285,16 @@ cannot be mistaken for a rate you could take. Each line carries the date it was 
 			'title' => 'The three scenarios, and the rates',
 			'panel' => true,
 			'body'  => '
-<p>Scenario A, B and C are the same purchase with three different down payments &mdash; 10%, 15% and
-20% to begin with. Change any of them, and change the rate or the amortization independently if you
-want to compare a fixed against a variable.</p>
+<p>Scenario A, B and C start as the same purchase with three different down payments &mdash; 10%,
+15% and 20%. Change any of them, and change the rate or the amortization independently if you want
+to compare a fixed against a variable.</p>
+<p><strong>Each scenario can also hold a different property.</strong> B and C follow Scenario A to
+begin with, so you type the price once; press <em>Use a different property</em> in either and it
+takes its own price, province, municipality, payment frequency, term and first-time-buyer or
+new-build status. That lets you put three houses side by side &mdash; or the same house bought in
+two provinces, or monthly against accelerated bi-weekly payments. <em>Same as Scenario A</em> puts
+it back. Each column then shows its own land transfer tax, relief and closing costs, and the
+government programs below follow whichever scenario you have selected.</p>
 <table>
 <tbody>
 <tr><td><strong>Down payment (%) / ($)</strong></td><td>Type into either; the other follows. Typing

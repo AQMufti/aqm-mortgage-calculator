@@ -9,6 +9,22 @@
    240px is the widest option any of these selects carries, so a second column now waits until it
    can actually hold one. Measured, not guessed. */
 .aqm-mc__shared{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 18px;align-items:end}
+
+/* ------------------------------------------------------ the property, per scenario (1.11.0)
+   Each scenario carries a whole property. A scenario that FOLLOWS A hides its block entirely and
+   shows one line instead - three full property blocks stacked would be unusable on a phone, and
+   one property is the usual case anyway. Single column inside a scenario, because a scenario is
+   already narrow; two columns once there is room for them. */
+.aqm-mc__prop{display:grid;grid-template-columns:1fr;gap:10px 14px;align-items:end;padding:0 0 12px;margin:0 0 12px;border-bottom:1px dashed var(--line)}
+.aqm-mc__linkbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:8px 10px;background:#f5f7f9;border:1px solid var(--line);border-radius:6px;font-size:.85rem}
+.aqm-mc__linkbar span{color:#393939}
+.aqm-mc__linkbar b{font-weight:600}
+.aqm-mc__linkbar small{display:block;color:#6b6b6b;font-size:.8rem;margin-top:1px}
+.aqm-mc__linkbar button{margin-left:auto;background:#fff;border:1px solid #cfcfcf;border-radius:5px;padding:6px 10px;font:inherit;font-size:.8rem;cursor:pointer;color:#393939;white-space:nowrap}
+.aqm-mc__linkbar button:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+.aqm-mc__forwhich{font-size:.88rem}
+@media (min-width:900px){.aqm-mc__prop{grid-template-columns:1fr 1fr}.aqm-mc__prop>.aqm-mc__chk,.aqm-mc__prop>.aqm-mc__hst,.aqm-mc__prop>.aqm-mc__sub{grid-column:1/-1}}
+
 .aqm-mc label{display:block;font-weight:600;font-size:.85rem;margin:0 0 5px}
 .aqm-mc input[type=number],.aqm-mc select{width:100%;padding:9px 10px;border:1px solid #bdbdbd;border-radius:6px;font-size:1rem;background:#fff;color:inherit}
 .aqm-mc input:focus,.aqm-mc select:focus,.aqm-mc button:focus-visible{outline:2px solid var(--red);outline-offset:1px}
